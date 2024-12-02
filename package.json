@@ -1,0 +1,23 @@
+{
+  "name": "genesis-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "docker buildx build --platform linux/amd64,linux/arm64 -t sl3mey0/genesis-backend:latest .",
+    "push": "docker push sl3mey0/genesis-backend:latest",
+    "build-push": "npm run build && npm run push",
+    "start-container": "docker-compose up -d",
+    "dev": "nodemon main.js",
+    "start": "node main.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.21.1",
+    "mongoose": "^8.8.2",
+    "nodemon": "^3.1.7"
+  }
+}
