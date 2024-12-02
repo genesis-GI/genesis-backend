@@ -21,13 +21,13 @@ app.get('/register', (req, res) => {
 })
 
 
-app.post('/register/:username/:email/:password', async (req, res) => {
+app.post('/register/:username/:email/:password', (req, res) => {
     const username = req.params.username;
     const email = req.params.email;
     const password = req.params.password;
 
-    
-    if(await db.register(username, email, password)){
+
+    if(db.register(username, email, password)){
         res.status(200).send('User registered');
     }else{
         res.status(401).send("Error during register sequence");
@@ -43,7 +43,6 @@ app.post('/login/:email/:password', async (req, res) => {
         if(!await db.login(email, password)){
             res.status(401).send('Invalid credentials');
         }else{
-            console.warn("[main.js:46]: Login successful")
             res.status(200).send('Login successful');
         }
     }catch(error){
