@@ -25,7 +25,7 @@
         }else{
 
         
-            const url = "http://localhost:8080/register/" + username.value + "/" + email.value + "/" + password.value
+            const url = "/register/" + username.value + "/" + email.value + "/" + password.value
             fetch(url, {method: "POST"})
             .then(response => {
                 if(!response.status == 200){
