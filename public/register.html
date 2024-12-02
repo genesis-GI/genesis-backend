@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Genesis / Register</title>
 </head>
 <body>
     <h1>Register at Genesis</h1>
@@ -13,9 +13,7 @@
     <button id="submit" onclick="submit()">Submit</button>
 </body>
 <script>
-    // Fix:
-    // 1. password can be empty somehow
-    // 2. Login (backend + frontend)
+
     const username = document.getElementById('username');
     const password = document.getElementById('password');
     const email = document.getElementById('email');
@@ -27,8 +25,7 @@
         }else{
 
         
-            const url = "http://localhost:8080/register/" + username.value + "/" + email.value + "/" + password.value
-            alert("URL: " + url)
+            const url = "/register/" + username.value + "/" + email.value + "/" + password.value
             fetch(url, {method: "POST"})
             .then(response => {
                 if(!response.status == 200){

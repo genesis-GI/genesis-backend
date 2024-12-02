@@ -3,9 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Genesis / Login</title>
 </head>
 <body>
-    <h2>Under construction</h2>
+    <h1>Login at Genesis</h1>
+    <input type = "text" id="email" placeholder="Enter your email">
+    <input type = "text" id="password" placeholder="Enter a password...">
+    <button id="submit" onclick="submit()">Submit</button>
 </body>
+<script>
+
+
+    const password = document.getElementById('password');
+    const email = document.getElementById('email');
+
+    
+    function submit(){
+        if (!/\S/.test(password.value) || !/\S/.test(email.value)) {
+            alert("Error: You can't leave a field empty");
+        }else{
+
+        
+            const url = "/login/" + email.value + "/" + password.value
+
+            fetch(url, {method: "POST"})
+            .then(response => {
+                if(response.status != 200){
+                    alert("Something went wrong with the request, please try again later")
+                    throw new Error('Network response was not ok');
+                }else{
+                    alert("Login successful")    
+                }
+                
+            })
+        }   
+    
+    }
+</script>
 </html>
