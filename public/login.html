@@ -24,7 +24,7 @@
         }else{
 
         
-            const url = "http://localhost:8080/login/" + email.value + "/" + password.value
+            const url = "/login/" + email.value + "/" + password.value
 
             fetch(url, {method: "POST"})
             .then(response => {
