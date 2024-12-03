@@ -9,7 +9,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, "public/index.html"));
-    // res.status(500).send('Error 500: This is a invalid path!');
 });
 
 app.get('/login', (req, res) => {
