@@ -45,24 +45,26 @@ async function register(username, email, password) {
     const hash = await bcrypt.hash(password, 10);
 
     const userExists = await collection.findOne({
-        username: username,
+        username: username
+    })
+    const emailExists = await collection.findOne({
         email: email
     })
-    if(userExists){
+    if(userExists || emailExists){
         console.log("User already registered");
         return false;
+    }else{
+        collection.insertOne({ 
+            username: username, 
+            email: email, 
+            password: hash,
+            admin: false,
+            created_at: new Date(),
+            ownsGame: false
+        })
+            .then(() => console.log('User registered successfully'))
+            .catch(err => console.error('Error inserting user:', err));
     }
-    collection.insertOne({ 
-        username: username, 
-        email: email, 
-        password: hash,
-        admin: false,
-        created_at: new Date(),
-        ownsGame: false
-    })
-        .then(() => console.log('User registered successfully'))
-        .catch(err => console.error('Error inserting user:', err));
-
     
     return true;
 }
