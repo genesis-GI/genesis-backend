@@ -44,6 +44,10 @@ async function register(username, email, password) {
     const salt = 10;
     const hash = await bcrypt.hash(password, 10);
 
+    if (!email.includes("@") || !email.includes(".")) {
+        console.log("Invalid email format");
+        return false;
+    }
     const userExists = await collection.findOne({
         username: username
     })
