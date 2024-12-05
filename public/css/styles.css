@@ -1,0 +1,220 @@
+:root {
+  --background-color: #1a1a2e;
+  --text-color: #dbe4f7;
+  --accent-color: #5c5cfc;
+  --input-background: #2e2e4d;
+  --input-border: #4a4afc;
+  --input-focus: #715aff;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Arial', sans-serif;
+  background: linear-gradient(45deg, var(--background-color), #4e4e9c);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3 {
+  margin: 0;
+  font-weight: bold;
+}
+
+p {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #4a4afc;
+  text-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
+}
+
+button {
+  background-color: var(--accent-color);
+  color: var(--text-color);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+button:hover {
+  background-color: #4a4afc;
+  transform: scale(1.05);
+}
+
+button:after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300%;
+  height: 300%;
+  background-color: rgba(255, 255, 255, 0.4);
+  transition: width 0.5s, height 0.5s, top 0.5s, left 0.5s;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+}
+
+button:active:after {
+  width: 0;
+  height: 0;
+  opacity: 1;
+  top: 50%;
+  left: 50%;
+}
+
+input, textarea, select {
+  width: 100%;
+  max-width: 400px;
+  padding: 0.75rem;
+  font-size: 1rem;
+  color: var(--text-color);
+  background-color: var(--input-background);
+  border: 2px solid var(--input-border);
+  border-radius: 8px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--input-focus);
+  outline: none;
+  box-shadow: 0 0 5px var(--input-focus);
+}
+
+textarea {
+  resize: vertical;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+label {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.light-mode {
+  --background-color: #f0f0f3;
+  --text-color: #1a1a2e;
+  --accent-color: #715aff;
+  --input-background: #ffffff;
+  --input-border: #cccccc;
+  --input-focus: #715aff;
+}
+
+/* Notification styles */
+.notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 300px;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.notification.success {
+  background-color: rgba(50, 205, 50, 0.8);
+  border: 2px solid rgba(50, 205, 50, 1);
+  color: #fff;
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.notification.error {
+  background-color: rgba(220, 20, 60, 0.8);
+  border: 2px solid rgba(220, 20, 60, 1);
+  color: #fff;
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+.notification.warning {
+  background-color: orange;
+  border: 2px solid orange;
+  color: #fff;
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.notification.hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(-20px);
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 20ch; 
+  }
+}
+
+@keyframes blink {
+  from, to {
+    border-color: transparent;
+  }
+  50% {
+    border-color: var(--text-color);
+  }
+}
+
+.typing {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid var(--text-color);
+  font-family: 'Courier New', Courier, monospace; 
+  font-size: 1.5rem;
+  width: 0; 
+  animation: typing 2s steps(20, end) forwards, blink 0.6s step-end infinite;
+  animation: typing 2s steps(20, end) forwards, blink 0.6s step-end infinite, hide-cursor 0s 2s forwards;
+}
+
+@keyframes hide-cursor {
+  to {
+    border-right: none;
+  }
+}

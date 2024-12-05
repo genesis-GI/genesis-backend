@@ -5,11 +5,10 @@ const path = require('path');
 const app = express();
 const PORT = 8080
 
-
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, "public/index.html"));
-    // res.status(500).send('Error 500: This is a invalid path!');
 });
 
 app.get('/login', (req, res) => {
@@ -21,13 +20,13 @@ app.get('/register', (req, res) => {
 })
 
 
-app.post('/register/:username/:email/:password', (req, res) => {
+app.post('/register/:username/:email/:password', async (req, res) => {
     const username = req.params.username;
     const email = req.params.email;
     const password = req.params.password;
 
-
-    if(db.register(username, email, password)){
+    
+    if(await db.register(username, email, password)){
         res.status(200).send('User registered');
     }else{
         res.status(401).send("Error during register sequence");
@@ -43,6 +42,7 @@ app.post('/login/:email/:password', async (req, res) => {
         if(!await db.login(email, password)){
             res.status(401).send('Invalid credentials');
         }else{
+            console.warn("[main.js:46]: Login successful")
             res.status(200).send('Login successful');
         }
     }catch(error){

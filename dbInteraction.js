@@ -39,26 +39,31 @@ async function init() {
 
 
 
-function register(username, email, password) {
+async function register(username, email, password) {
     const collection = db.collection("accounts")
     const salt = 10;
+    const hash = await bcrypt.hash(password, 10);
 
-    bcrypt.hash(password, salt, (err, hash) => {
-        console.warn("[dbInteraction.js / 40]: Hash, " + hash)
-        collection.insertOne({ 
-            username: username, 
-            email: email, 
-            password: hash,
-            admin: false,
-            created_at: new Date(),
-            ownsGame: false
-        })
-            .then(() => console.log('User registered successfully'))
-            .catch(err => console.error('Error inserting user:', err));
-    });
+    const userExists = await collection.findOne({
+        username: username,
+        email: email
+    })
+    if(userExists){
+        console.log("User already registered");
+        return false;
+    }
+    collection.insertOne({ 
+        username: username, 
+        email: email, 
+        password: hash,
+        admin: false,
+        created_at: new Date(),
+        ownsGame: false
+    })
+        .then(() => console.log('User registered successfully'))
+        .catch(err => console.error('Error inserting user:', err));
+
     
-
-
     return true;
 }
 

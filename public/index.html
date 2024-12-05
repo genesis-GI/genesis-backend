@@ -3,9 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Genesis</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        /* Make the particles field cover the entire screen */
+        #particles-js {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            /*z-index: -1; /* Ensure it stays behind other elements */
+        }
+        body {
+            margin: 0; /* Remove default margins */
+            overflow: hidden; /* Prevent scrolling */
+        }
+    </style>
 </head>
 <body>
-    
+    <div id="particles-js"></div>
+    <h1 class="typing">Welcome to Genesis</h1>
+    <button onclick="window.location.href='/login'">Login</button>
+    <button onclick="window.location.href='/register'">Register</button>
+
+    <!-- Notification example (you can trigger this dynamically via JavaScript) 
+    <div class="notification success">Success! Welcome to Genesis.</div>
+    <div class="notification error">Error! Something went wrong.</div>
+    <div class="notification warning">Warning, Database is offline!</div>
+    -->
+    <div id="notification" class="hidden"></div>
+
+    <button onclick="showNotification('Warning!', 'warning')">DEBUG - SHOW WARNING</button>
+
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS('particles-js', {
+            "particles": {
+                "number": {
+                    "value": 80
+                },
+                "size": {   
+                    "value": 3
+                },
+                "move": {
+                    "enable": true,
+                    "speed": 2
+                }
+            }
+        });
+        
+        const notification = document.getElementById('notification');
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            setTimeout(() => {
+                notification.className = "notification hidden";
+            }, 3000);
+        }
+    </script>
 </body>
 </html>
