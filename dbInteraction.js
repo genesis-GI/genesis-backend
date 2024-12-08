@@ -44,25 +44,31 @@ async function register(username, email, password) {
     const salt = 10;
     const hash = await bcrypt.hash(password, 10);
 
-    const userExists = await collection.findOne({
-        username: username,
-        email: email
-    })
-    if(userExists){
-        console.log("User already registered");
+    if (!email.includes("@") || !email.includes(".")) {
+        console.log("Invalid email format");
         return false;
     }
-    collection.insertOne({ 
-        username: username, 
-        email: email, 
-        password: hash,
-        admin: false,
-        created_at: new Date(),
-        ownsGame: false
+    const userExists = await collection.findOne({
+        username: username
     })
-        .then(() => console.log('User registered successfully'))
-        .catch(err => console.error('Error inserting user:', err));
-
+    const emailExists = await collection.findOne({
+        email: email
+    })
+    if(userExists || emailExists){
+        console.log("User already registered");
+        return false;
+    }else{
+        collection.insertOne({ 
+            username: username, 
+            email: email, 
+            password: hash,
+            admin: false,
+            created_at: new Date(),
+            ownsGame: false
+        })
+            .then(() => console.log('User registered successfully'))
+            .catch(err => console.error('Error inserting user:', err));
+    }
     
     return true;
 }
