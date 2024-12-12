@@ -2,8 +2,9 @@
     "builds": [
         {
             "name": "QA",
-            "downloadLink": "cloudmesh.xyz/game/QA/game.zip",
-            "requiredWaveAccess": -1
+            "downloadLink": "http://cloudmesh.xyz/game/QA/game.zip",
+            "requiredWaveAccess": -1,
+            "version": "1.0.0-preview"
         }
     ]
 }
