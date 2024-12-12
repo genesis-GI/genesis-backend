@@ -31,7 +31,6 @@ app.post('/register/:username/:email/:password', async (req, res) => {
     }else{
         res.status(401).send("Error during register sequence");
     }
-
 });
 
 app.post('/login/:email/:password', async (req, res) => {
@@ -41,6 +40,7 @@ app.post('/login/:email/:password', async (req, res) => {
     try{
         if(!await db.login(email, password)){
             res.status(401).send('Invalid credentials');
+            res.status(503).send("We steal your data")
         }else{
             console.warn("[main.js:46]: Login successful")
             res.status(200).send('Login successful');
