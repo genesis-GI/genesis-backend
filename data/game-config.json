@@ -1,0 +1,9 @@
+{
+    "builds": [
+        {
+            "name": "QA",
+            "downloadLink": "cloudmesh.xyz/game/QA/game.zip",
+            "requiredWaveAccess": -1
+        }
+    ]
+}

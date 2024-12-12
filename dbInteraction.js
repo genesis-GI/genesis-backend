@@ -63,6 +63,7 @@ async function register(username, email, password) {
                 email: email, 
                 password: hash,
                 admin: false,
+                wave: 5,
                 created_at: new Date(),
                 ownsGame: false
             })
@@ -90,5 +91,16 @@ async function login(email, password){
         return true;
     }
 }
+async function getUserByEmail(email) {
+    try {
+        const collection = db.collection('accounts'); // Directly get the collection
+        return await collection.findOne({ email });
+    } catch (error) {
+        console.error('[dbInteraction.js]: Error fetching user by email:', error);
+        throw error;
+    }
+}
 
-module.exports = { register, login, init, reachable};
+
+
+module.exports = { register, login, init, reachable, getUserByEmail};
