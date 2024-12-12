@@ -66,8 +66,8 @@ async function register(username, email, password) {
                 created_at: new Date(),
                 ownsGame: false
             })
-                .then(() => console.log('User registered successfully'))
-                .catch(err => console.error('Error inserting user:', err));
+                .then(() => console.log('[dbInteraction.js]: User registered successfully'))
+                .catch(err => console.error('[dbInteraction.js]: Error inserting user:', err));
         }
         
         return true;
