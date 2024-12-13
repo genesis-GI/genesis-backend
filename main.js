@@ -1,9 +1,10 @@
 const express = require('express');
 const db = require('./dbInteraction');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
-const PORT = 8080
+const PORT = 8088
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -50,6 +51,42 @@ app.post('/login/:email/:password', async (req, res) => {
     }
 });
 
+app.get('/api/getVersions/:email', async (req, res) => {
+    const accountMail = req.params.email;
+
+    try {
+        // Load the JSON dynamically
+        const jsonFilePath = path.join(__dirname, 'data', 'game-config.json');
+        const rawData = fs.readFileSync(jsonFilePath, 'utf-8'); // Read file each time it's accessed
+        const gameConfig = JSON.parse(rawData);
+
+        // Validate the structure of the JSON
+        if (!Array.isArray(gameConfig.builds)) {
+            throw new Error("Invalid JSON structure: 'builds' is not an array");
+        }
+
+        // Retrieve the user from the database
+        const user = await db.getUserByEmail(accountMail);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const userWave = user.wave;
+
+        // Filter game builds based on the user's wave access
+        const availableBuilds = gameConfig.builds.filter(build => build.requiredWaveAccess >= userWave);
+
+        // Send only the filtered builds
+        return res.json({
+            email: accountMail,
+            waveAccess: userWave,
+            allowedBuilds: availableBuilds,
+        });
+    } catch (error) {
+        console.error("[main.js]: Error reading game-config.json or processing request:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 
 app.listen(PORT, async () => {
 
