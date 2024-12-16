@@ -40,25 +40,43 @@ async function init() {
 
 
 async function register(username, email, password) {
-    const collection = db.collection("accounts")
-    const salt = 10;
+
     const hash = await bcrypt.hash(password, 10);
+    try{
+        const collection = db.collection("accounts")
+        if (!email.includes("@") || !email.includes(".")) {
+            console.log("Invalid email format");
+            return false;
+        }
+        const userExists = await collection.findOne({
+            username: username
+        })
+        const emailExists = await collection.findOne({
+            email: email
+        })
+        if(userExists || emailExists){
+            console.log("User already registered");
+            return false;
+        }else{
+            collection.insertOne({ 
+                username: username, 
+                email: email, 
+                password: hash,
+                admin: false,
+                wave: 5,
+                created_at: new Date(),
+                ownsGame: false
+            })
+                .then(() => console.log('[dbInteraction.js]: User registered successfully'))
+                .catch(err => console.error('[dbInteraction.js]: Error inserting user:', err));
+        }
+        
+        return true;
+    }catch(error){
+        console.warn("[dbInteraction.js]: Error during register sequence");
+        return false;
+    }
 
-    collection.insertOne({ 
-        username: username, 
-        email: email, 
-        password: hash,
-        admin: false,
-        created_at: new Date(),
-        ownsGame: false
-    })
-        .then(() => console.log('User registered successfully'))
-        .catch(err => console.error('Error inserting user:', err));
-
-    
-
-
-    return true;
 }
 
 async function login(email, password){
@@ -69,10 +87,20 @@ async function login(email, password){
     const isMatch = await bcrypt.compare(password, user.password);
     if(!isMatch){
         return false;
+    }else{
+        return true;
     }
-    return true;
+}
+async function getUserByEmail(email) {
+    try {
+        const collection = db.collection('accounts'); // Directly get the collection
+        return await collection.findOne({ email });
+    } catch (error) {
+        console.error('[dbInteraction.js]: Error fetching user by email:', error);
+        throw error;
+    }
 }
 
 
 
-module.exports = { register, login, init, reachable};
+module.exports = { register, login, init, reachable, getUserByEmail};

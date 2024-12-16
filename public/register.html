@@ -4,40 +4,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Genesis / Register</title>
+    <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <h1>Register at Genesis</h1>
-    <input type = "text" id="email" placeholder="Enter your email">
-    <input type = "text" id="username" placeholder="Enter your username...">
-    <input type = "text" id="password" placeholder="Enter a password...">
-    <button id="submit" onclick="submit()">Submit</button>
+    <h1 class="typing">Register a account</h1>
+    <form id="register-form">
+        <input type="email" id="email" placeholder="Enter your email" required>
+        <input type="text" id="username" placeholder="Enter your username" required>
+        <input type="password" id="password" placeholder="Enter a password" required>
+        <button type="button" id="submit" onclick="submitForm()">Submit</button>
+    </form>
+
+    <button type="button" id="home" onclick="window.location.href='/'">Home</button>
+    <div id="notification" class="hidden"></div>
 </body>
 <script>
-
     const username = document.getElementById('username');
     const password = document.getElementById('password');
     const email = document.getElementById('email');
+    const notification = document.getElementById('notification');
 
-    
-    function submit(){
+    function showNotification(message, type, duration = 3000) {
+        notification.textContent = message;
+        notification.className = `notification ${type}`;
+        setTimeout(() => {
+            notification.className = "notification hidden";
+        }, duration);
+    }
+
+    function submitForm() {
         if (!/\S/.test(password.value) || !/\S/.test(username.value) || !/\S/.test(email.value)) {
-            alert("Error: You can't leave a field empty");
-        }else{
-
-        
-            const url = "/register/" + username.value + "/" + email.value + "/" + password.value
-            fetch(url, {method: "POST"})
-            .then(response => {
-                if(!response.status == 200){
-                    alert("Something went wrong with the request, please try again later")
-                    throw new Error('Network response was not ok');
-                }else{
-                    alert("Registration successful")    
-                }
-                
-            })
-        }   
-    
+            showNotification("Error: Fields cannot be empty", "error");
+        } else {
+            const url = `/register/${username.value}/${email.value}/${password.value}`;
+            fetch(url, { method: "POST" })
+                .then(response => {
+                    if (response.status !== 200) {
+                        showNotification("Something went wrong, please try again", "error");
+                        throw new Error('Network response was not ok');
+                    } else {
+                        showNotification("Registration successful!", "success");
+                        setTimeout(() => {
+                            window.location.href='/';
+                        }, "1000");
+                        
+                    }
+                })
+                .catch(() => {
+                    showNotification("Something went wrong, please try again", "error");
+                });
+        }
     }
 </script>
 </html>

@@ -4,40 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Genesis / Login</title>
+    <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <h1>Login at Genesis</h1>
-    <input type = "text" id="email" placeholder="Enter your email">
-    <input type = "text" id="password" placeholder="Enter a password...">
-    <button id="submit" onclick="submit()">Submit</button>
+    <h1 class="typing">Login to a account</h1>
+    <form id="login-form">
+        <input type="text" id="email" placeholder="Enter your email">
+        <input type="password" id="password" placeholder="Enter a password...">
+        <button type="button" id="submit" onclick="submitForm()">Submit</button>
+    </form>
+    <button type="button" id="home" onclick="window.location.href='/'">Home</button>
+    <div id="notification" class="hidden"></div>
 </body>
 <script>
-
-
     const password = document.getElementById('password');
     const email = document.getElementById('email');
+    const notification = document.getElementById('notification');
 
-    
-    function submit(){
+    function showNotification(message, type) {
+        notification.textContent = message;
+        notification.className = `notification ${type}`;
+        setTimeout(() => {
+            notification.className = "notification hidden";
+        }, 3000);
+    }
+
+    function submitForm() {
         if (!/\S/.test(password.value) || !/\S/.test(email.value)) {
-            alert("Error: You can't leave a field empty");
-        }else{
-
-        
-            const url = "/login/" + email.value + "/" + password.value
-
-            fetch(url, {method: "POST"})
-            .then(response => {
-                if(response.status != 200){
-                    alert("Something went wrong with the request, please try again later")
-                    throw new Error('Network response was not ok');
-                }else{
-                    alert("Login successful")    
-                }
-                
-            })
-        }   
-    
+            showNotification("Error: Fields cannot be empty", "error");
+        } else {
+            const url = `/login/${email.value}/${password.value}`;
+            fetch(url, { method: "POST" })
+                .then(response => {
+                    if (response.status !== 200) {
+                        showNotification("Something went wrong, please try again", "error");
+                        throw new Error('Network response was not ok');
+                    } else {
+                        showNotification("Login successful!", "success");
+                    }
+                })
+                .catch(() => {
+                    showNotification("Something went wrong, please try again", "error");
+                });
+        }
     }
 </script>
 </html>

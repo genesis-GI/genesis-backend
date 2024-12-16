@@ -1,0 +1,16 @@
+{
+    "builds": [
+        {
+            "name": "Live",
+            "downloadLink": "",
+            "requiredWaveAccess": 5,
+            "version": ""
+        },
+        {
+            "name": "QA",
+            "downloadLink": "http://cloudmesh.xyz/game/QA/game.zip",
+            "requiredWaveAccess": -1,
+            "version": "1.0.0"
+        }
+    ]
+}
