@@ -20,6 +20,10 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, "public/register.html"));
 })
 
+app.get('/download', (req, res) => {
+    res.sendFile(path.join(__dirname, "public/launcherdownload.html"));
+});
+
 
 app.post('/register/:username/:email/:password', async (req, res) => {
     const username = req.params.username;

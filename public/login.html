@@ -48,6 +48,9 @@
                     showNotification("Something went wrong, please try again", "error");
                 } else {
                     showNotification("Login successful!", "success");
+                    setTimeout(() => {
+                        window.location.href = '/download';
+                    }, 1000);
                 }
             } catch (error) {
                 showNotification("Something went wrong, please try again", "error");
