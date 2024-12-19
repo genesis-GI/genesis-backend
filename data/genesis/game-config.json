@@ -1,10 +1,10 @@
 {
     "builds": [
         {
-            "name": "Live",
-            "downloadLink": "",
+            "name": "LIVE",
+            "buildURL": "https://cloudmesh.xyz/genesis/1.0.0-LIVE/",
             "requiredWaveAccess": 5,
-            "version": ""
+            "version": "1.0.0"
         }
     ]
 }

@@ -61,7 +61,7 @@ app.get('/api/getVersions/:game/:email', async (req, res) => {
     try {
 
         const jsonFilePath = path.join(__dirname, 'data', game, 'game-config.json');
-        const rawData = fs.readFileSync(jsonFilePath, 'utf-8'); // Read file each time it's accessed
+        const rawData = fs.readFileSync(jsonFilePath, 'utf-8');
         const gameConfig = JSON.parse(rawData);
 
         // Validate the structure of the JSON
