@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <h1 class="typing">Login to a account</h1>
+    <h1 class="typing">Login to an account</h1>
     <form id="login-form">
         <input type="text" id="email" placeholder="Enter your email">
         <input type="password" id="password" placeholder="Enter a password...">
@@ -29,23 +29,29 @@
         }, 3000);
     }
 
-    function submitForm() {
+    async function hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function submitForm() {
         if (!/\S/.test(password.value) || !/\S/.test(email.value)) {
             showNotification("Error: Fields cannot be empty", "error");
         } else {
-            const url = `/login/${email.value}/${password.value}`;
-            fetch(url, { method: "POST" })
-                .then(response => {
-                    if (response.status !== 200) {
-                        showNotification("Something went wrong, please try again", "error");
-                        throw new Error('Network response was not ok');
-                    } else {
-                        showNotification("Login successful!", "success");
-                    }
-                })
-                .catch(() => {
+            try {
+                const hashedPassword = await hashPassword(password.value);
+                const url = `/login/${email.value}/${hashedPassword}`;
+                const response = await fetch(url, { method: "POST" });
+                if (response.status !== 200) {
                     showNotification("Something went wrong, please try again", "error");
-                });
+                } else {
+                    showNotification("Login successful!", "success");
+                }
+            } catch (error) {
+                showNotification("Something went wrong, please try again", "error");
+            }
         }
     }
 </script>

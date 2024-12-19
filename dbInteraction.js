@@ -40,8 +40,6 @@ async function init() {
 
 
 async function register(username, email, password) {
-
-    const hash = await bcrypt.hash(password, 10);
     try{
         const collection = db.collection("accounts")
         if (!email.includes("@") || !email.includes(".")) {
@@ -61,7 +59,7 @@ async function register(username, email, password) {
             collection.insertOne({ 
                 username: username, 
                 email: email, 
-                password: hash,
+                password: password,
                 admin: false,
                 wave: 5,
                 created_at: new Date(),
@@ -81,14 +79,23 @@ async function register(username, email, password) {
 
 async function login(email, password){
     const collection = db.collection("accounts")
-    const user = await collection.findOne({
-        email: email
-    })
-    const isMatch = await bcrypt.compare(password, user.password);
-    if(!isMatch){
+    try{
+
+        const userFound = await collection.findOne({
+            email: email,
+            password: password
+        })
+
+        if(await userFound)
+        {
+            return true
+        }else{
+            return false
+        }
+    }
+    catch(error){
+        console.warn("[dbInteraction.js]: Error during login sequence");
         return false;
-    }else{
-        return true;
     }
 }
 async function getUserByEmail(email) {

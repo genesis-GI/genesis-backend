@@ -41,7 +41,7 @@ app.post('/login/:email/:password', async (req, res) => {
     try{
         if(!await db.login(email, password)){
             res.status(401).send('Invalid credentials');
-            res.status(503).send("We steal your data")
+
         }else{
             console.warn("[main.js:46]: Login successful")
             res.status(200).send('Login successful');
@@ -51,12 +51,12 @@ app.post('/login/:email/:password', async (req, res) => {
     }
 });
 
-app.get('/api/getVersions/:email', async (req, res) => {
+app.get('/api/getVersions/:game/:email', async (req, res) => {
     const accountMail = req.params.email;
-
+    const game = req.params.game;
     try {
-        // Load the JSON dynamically
-        const jsonFilePath = path.join(__dirname, 'data', 'game-config.json');
+
+        const jsonFilePath = path.join(__dirname, 'data', game, 'game-config.json');
         const rawData = fs.readFileSync(jsonFilePath, 'utf-8'); // Read file each time it's accessed
         const gameConfig = JSON.parse(rawData);
 
