@@ -2,9 +2,11 @@
     "builds": [
         {
             "name": "LIVE",
-            "buildURL": "https://cloudmesh.xyz/genesis/1.0.0-LIVE/",
+            "buildURL": "https://cloudmesh.xyz/api/download/genesis/1.0.0-LIVE",
+            "checkSumUrl": "https://cloudmesh.xyz/api/getChecksums/genesis/1.0.0-LIVE",
             "requiredWaveAccess": 5,
-            "version": "1.0.0"
+            "version": "1.0.0-LIVE",
+            "versionNum":"1.0.0"
         }
     ]
 }

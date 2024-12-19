@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Versions and Checksums</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            margin-top: 20px;
+        }
+        .versions, .checksums {
+            margin: 20px 0;
+        }
+        .build {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Game Versions and Checksums</h1>
+    <div>
+        <label for="email">Email: </label>
+        <input type="email" id="email" value="test@test.at" readonly>
+    </div>
+    <div>
+        <label for="game">Game: </label>
+        <input type="text" id="game" value="genesis" readonly>
+    </div>
+    <button id="fetchVersions">Fetch Versions</button>
+
+    <div class="container">
+        <div class="versions">
+            <h2>Available Versions</h2>
+            <div id="versionData">No versions loaded yet...</div>
+        </div>
+
+        <div class="checksums">
+            <h2>Checksums</h2>
+            <pre id="checksumsOutput">Select a version to see checksums...</pre>
+        </div>
+    </div>
+
+    <script>
+        const email = document.getElementById('email').value;
+        const game = document.getElementById('game').value;
+        const fetchVersionsButton = document.getElementById('fetchVersions');
+        const versionData = document.getElementById('versionData');
+        const checksumsOutput = document.getElementById('checksumsOutput');
+
+        // Fetch versions
+        fetchVersionsButton.addEventListener('click', async () => {
+            versionData.innerHTML = '<p>Loading...</p>';
+            checksumsOutput.textContent = 'Select a version to see checksums...';
+
+            try {
+                const response = await fetch(`/api/getVersions/${game}/${email}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    versionData.innerHTML = '';
+                    const { allowedBuilds, waveAccess, email: userEmail } = data;
+
+                    // Display versions and their details
+                    allowedBuilds.forEach(build => {
+                        const buildDiv = document.createElement('div');
+                        buildDiv.classList.add('build');
+                        buildDiv.innerHTML = `
+                            <p><strong>Name:</strong> ${build.name}</p>
+                            <p><strong>Version:</strong> ${build.version}</p>
+                            <p><strong>Required Wave Access:</strong> ${build.requiredWaveAccess}</p>
+                            <p><strong>Build URL:</strong> <a href="${build.buildURL}" target="_blank">${build.buildURL}</a></p>
+                            <button data-checksum-url="${build.checkSumUrl}">Fetch Checksums</button>
+                        `;
+                        versionData.appendChild(buildDiv);
+
+                        // Add event listener for checksum button
+                        const checksumButton = buildDiv.querySelector('button');
+                        checksumButton.addEventListener('click', () => fetchChecksums(build.checkSumUrl));
+                    });
+
+                    // Display user info
+                    const userInfo = document.createElement('p');
+                    userInfo.innerHTML = `<strong>User Email:</strong> ${userEmail} <br><strong>Wave Access:</strong> ${waveAccess}`;
+                    versionData.prepend(userInfo);
+
+                } else {
+                    versionData.innerHTML = `<p>Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                versionData.innerHTML = `<p>Error fetching versions: ${error.message}</p>`;
+            }
+        });
+
+        // Fetch checksums
+        async function fetchChecksums(checksumUrl) {
+            checksumsOutput.textContent = 'Loading checksums...';
+
+            try {
+                const response = await fetch(checksumUrl);
+                const data = await response.json();
+
+                if (response.ok) {
+                    checksumsOutput.textContent = JSON.stringify(data.checksums, null, 2);
+                } else {
+                    checksumsOutput.textContent = `Error: ${data.error}`;
+                }
+            } catch (error) {
+                checksumsOutput.textContent = `Error fetching checksums: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
