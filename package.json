@@ -1,6 +1,6 @@
 {
   "name": "genesis-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "scripts": {
     "build": "docker buildx build --platform linux/amd64,linux/arm64 -t sl3mey0/genesis-backend:latest .",
