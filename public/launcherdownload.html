@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
+    <div id="notification" class="hidden"></div>
     <h1>Download the Genesis Launcher</h1>
     <h4>Account needed for usage</h4>
     
@@ -15,7 +16,17 @@
 </body>
 <script>
     function download(){
-        window.location.href = '/';
+        //window.location.href = '/';
+        showNotification("Launcher is not finished and can't be downloaded yet!", 'warning')
     }
+
+    const notification = document.getElementById('notification');
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            setTimeout(() => {
+                notification.className = "notification hidden";
+            }, 3000);
+        }
 </script>
 </html>
