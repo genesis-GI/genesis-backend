@@ -53,8 +53,12 @@ app.post('/login/:email/:password', async (req, res) => {
     }
 });
 
-app.get('/test', (req, res) => {
+/* app.get('/test', (req, res) => {
     res.sendFile(path.join(__dirname, "public/temp.html"));
+}) */
+
+app.get('/performance', (req, res) => {
+    res.sendFile(path.join(__dirname, "public/Genesis-website-performance-report-2.html"));
 })
 
 app.get('/api/getVersions/:game/:email', async (req, res) => {
