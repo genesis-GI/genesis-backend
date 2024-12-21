@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genesis</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        /* Make the particles field cover the entire screen */
+        #particles-js {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1; /* Ensure it stays behind other elements */
+        }
+
+        body {
+            margin: 0; /* Remove default margins */
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        /* Dropdown container style */
+        #user-dropdown {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: none; /* Hidden by default */
+            z-index: 10;
+        }
+
+        #user-dropdown .dropdown-btn {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        #user-dropdown .dropdown-btn img {
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+        }
+
+        /* Dropdown content style */
+        #user-dropdown .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f1f1f1;
+            min-width: 160px;
+            z-index: 1;
+            border-radius: 5px;
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+            right: 0;
+        }
+
+        #user-dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        #user-dropdown .dropdown-content a {
+            color: var(--text-color);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        #user-dropdown .dropdown-content a:hover {
+            background-color: #ddd;
+        }
+
+        button {
+            background-color: var(--accent-color); /* Blue color from your stylesheet */
+            color: var(--text-color);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            background-color: #4a4afc;
+            transform: scale(1.05);
+        }
+
+        button:after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300%;
+            height: 300%;
+            background-color: rgba(255, 255, 255, 0.4);
+            transition: width 0.5s, height 0.5s, top 0.5s, left 0.5s;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        button:active:after {
+            width: 0;
+            height: 0;
+            opacity: 1;
+            top: 50%;
+            left: 50%;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <h1 class="typing">Welcome to Genesis</h1>
+
+
+    <button id="login-button" onclick="window.location.href='/login'">Login</button>
+    <button id="register-button" onclick="window.location.href='/register'">Register</button>
+
+    <div id="notification" class="hidden"></div>
+
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS('particles-js', {
+            "particles": {
+                "number": {
+                    "value": 80
+                },
+                "size": {   
+                    "value": 3
+                },
+                "move": {
+                    "enable": true,
+                    "speed": 2
+                }
+            }
+        });
+
+        // Function to check if the user is logged in based on cookies
+        window.onload = function() {
+            const loggedIn = document.cookie.includes('loggedIn=true');
+            const dropdown = document.getElementById('user-dropdown');
+            const loginButton = document.getElementById('login-button');
+            const registerButton = document.getElementById('register-button');
+
+            if (loggedIn) {
+                dropdown.style.display = 'block';
+                loginButton.style.display = 'none';
+                registerButton.style.display = 'none';
+            } else {
+                dropdown.style.display = 'none';
+                loginButton.style.display = 'inline-block';
+                registerButton.style.display = 'inline-block';
+            }
+        };
+
+        // Logout function
+        function logout() {
+            fetch('/logout')
+                .then(() => {
+                    window.location.reload();  // Reload the page to reflect the logged-out state
+                })
+                .catch(err => console.error("Logout failed", err));
+        }
+
+        const notification = document.getElementById('notification');
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            setTimeout(() => {
+                notification.className = "notification hidden";
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
