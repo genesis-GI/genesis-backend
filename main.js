@@ -3,14 +3,21 @@ const db = require('./dbInteraction');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const PORT = 8088;
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(cookieParser());  // Enable cookie parsing
+
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, "public/index.html"));
+    if (!req.cookies.loggedIn) {
+        //return res.status(403).send('Access forbidden: You must be logged in');
+        return res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+    }
+    res.sendFile(path.join(__dirname, 'public', 'loggedIn.html'));
 });
 
 app.get('/login', (req, res) => {
@@ -21,8 +28,20 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, "public/register.html"));
 });
 
+// Protect the download route with cookies
 app.get('/download', (req, res) => {
+    if (!req.cookies.loggedIn) {
+        return res.status(403).send('Access forbidden: You must be logged in');
+    }
     res.sendFile(path.join(__dirname, "public/launcherdownload.html"));
+});
+
+// New /spectrum route with login check
+app.get('/spectrum', (req, res) => {
+    if (!req.cookies.loggedIn) {
+        return res.status(403).send('Access forbidden: You must be logged in');
+    }
+    res.sendFile(path.join(__dirname, "public/spectrum.html"));
 });
 
 app.post('/register/:username/:email/:password', async (req, res) => {
@@ -46,6 +65,8 @@ app.post('/login/:email/:password', async (req, res) => {
             res.status(401).send('Invalid credentials');
         } else {
             console.warn("[main.js:46]: Login successful");
+            // Set a cookie to indicate the user is logged in
+            res.cookie('loggedIn', true, { httpOnly: true, secure: true }); // secure should be true in production
             res.status(200).send('Login successful');
         }
     } catch (error) {
@@ -53,13 +74,9 @@ app.post('/login/:email/:password', async (req, res) => {
     }
 });
 
-/* app.get('/test', (req, res) => {
-    res.sendFile(path.join(__dirname, "public/temp.html"));
-}) */
-
 app.get('/performance', (req, res) => {
     res.sendFile(path.join(__dirname, "public/Genesis-website-performance-report-2.html"));
-})
+});
 
 app.get('/api/getVersions/:game/:email', async (req, res) => {
     const accountMail = req.params.email;
@@ -92,7 +109,6 @@ app.get('/api/getVersions/:game/:email', async (req, res) => {
     }
 });
 
-// New endpoint to calculate checksums for files
 app.get('/api/getChecksums/:game/:version', async (req, res) => {
     const game = req.params.game;
     const version = req.params.version;
@@ -178,6 +194,11 @@ app.get('/api/download/:game/:version', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
+app.get('/logout', (req, res) => {
+    res.clearCookie('loggedIn');  // Clear the login cookie
+    res.redirect('/');  
+});
+
 
 app.listen(PORT, async () => {
     await db.init();

@@ -3,21 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Genesis -> Download -> Launcher</title>
+    <title>Genesis</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
+    <h1>Welcome!</h1>
+
     <div id="notification" class="hidden"></div>
-    <h1>Download the Genesis Launcher</h1>
-    <h4>Account needed for usage</h4>
-    
-    <h1> </h1>
-    <button onclick="download()">Download</button>
+    <button type="button" id="home" onclick="window.location.href='/download'">Download Launcher</button>
+    <button type="button" id="home" onclick="window.location.href='/spectrum'">Spectrum</button>
+    <button type="button" id="logout" onclick="logout()">Logout</button>
 </body>
+
 <script>
-    function download(){
-        //window.location.href='/';    -> Launcher download link 
-        showNotification("Launcher is not finished and can't be downloaded yet!", 'error')
+    async function logout(){
+        showNotification("Logging out...", 'warning')
+        setTimeout(() => {
+            window.location.href = '/logout';    
+        }, 3000);
+        
     }
 
     const notification = document.getElementById('notification');
