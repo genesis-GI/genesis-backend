@@ -1,6 +1,6 @@
 {
   "name": "genesis-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "scripts": {
     "build": "docker buildx build --platform linux/amd64,linux/arm64 -t sl3mey0/genesis-backend:latest .",
@@ -15,6 +15,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "archiver": "^7.0.1",
     "bcrypt": "^5.1.1",
     "express": "^4.21.1",
     "fs": "^0.0.1-security",
