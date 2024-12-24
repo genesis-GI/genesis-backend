@@ -4,6 +4,7 @@
             "name": "LIVE",
             "buildURL": "https://cloudmesh.xyz/api/download/genesis/1.0.0-LIVE",
             "checkSumUrl": "https://cloudmesh.xyz/api/getChecksums/genesis/1.0.0-LIVE",
+            "exePath": "Windows/genesis.exe",
             "requiredWaveAccess": 5,
             "version": "1.0.0-LIVE",
             "versionNum":"1.0.0"
