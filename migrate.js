@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const admin = require('firebase-admin');
-
+const bcrypt = require('bcrypt');
 
 admin.initializeApp({
   credential: admin.credential.cert('./serviceAccountKey.json'),
@@ -28,11 +28,13 @@ async function migrateData() {
 
     
     for (const user of users) {
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+
       const userRef = db.collection('accounts').doc();  
       await userRef.set({
         username: user.username,
         email: user.email,
-        password: user.password,
+        password: hashedPassword, // Save the hashed password
         admin: user.admin || false,
         wave: user.wave || 5,
         created_at: user.created_at || new Date(),
