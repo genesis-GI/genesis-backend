@@ -195,9 +195,15 @@ app.get('/api/download/:game/:version', async (req, res) => {
     }
 });
 app.get('/logout', (req, res) => {
-    res.clearCookie('loggedIn');  // Clear the login cookie
+    res.clearCookie('loggedIn'); 
     res.redirect('/');  
 });
+
+app.get('/api/motd', (req, res) => {
+    res.json({ motd: "MOTD Feature comming soon" });
+})
+
+
 
 
 app.listen(PORT, async () => {

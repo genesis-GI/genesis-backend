@@ -1,113 +1,112 @@
-const mongoose = require('mongoose');
+const admin = require('firebase-admin');
 const bcrypt = require('bcrypt');
 
 
+admin.initializeApp({
+  credential: admin.credential.cert('./serviceAccountKey.json'),
+});
+
+const db = admin.firestore(); 
 let reachable = true;
-let db;
+
 async function init() {
     try {
-        await mongoose.connect('mongodb://localhost:27017/genesis', {
-            serverSelectionTimeoutMS: 2000,
-            connectTimeoutMS: 2000, 
-        });
+        console.warn('Connected to Firestore.');
     } catch (error) {
-        console.warn("Error during database initialization phase.\nDatabase is not available");
-        return;  
+        console.warn('Error during database initialization phase.\nDatabase is not available');
+        reachable = false;
+        return;
     }
-
-
-    db = mongoose.connection;
-    db.on('error', (err) => {
-        console.error('MongoDB connection error:', err);
-
-    });
-
-    db.once('open', () => {
-        console.warn('Connected to the database.');
-
-    });
-
-    db.on('disconnected', () => {
-        console.warn('Database disconnected');
-
-    });
-
-    db.on('reconnected', () => {
-        console.warn('Database reconnected');
-    });
 }
-
 
 
 async function register(username, email, password) {
-    try{
-        const collection = db.collection("accounts")
-        if (!email.includes("@") || !email.includes(".")) {
-            console.log("Invalid email format");
+    try {
+        if (!email.includes('@') || !email.includes('.')) {
+            console.log('Invalid email format');
             return false;
         }
-        const userExists = await collection.findOne({
-            username: username
-        })
-        const emailExists = await collection.findOne({
-            email: email
-        })
-        if(userExists || emailExists){
-            console.log("User already registered");
+
+        const userRef = db.collection('accounts');
+        
+        // Check if username or email exists
+        const userSnapshot = await userRef.where('username', '==', username).get();
+        const emailSnapshot = await userRef.where('email', '==', email).get();
+
+        if (!userSnapshot.empty || !emailSnapshot.empty) {
+            console.log('User already registered');
             return false;
-        }else{
-            collection.insertOne({ 
-                username: username, 
-                email: email, 
-                password: password,
+        } else {
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            await userRef.add({
+                username: username,
+                email: email,
+                password: hashedPassword,
                 admin: false,
                 wave: 5,
                 created_at: new Date(),
-                ownsGame: false
-            })
-                .then(() => console.log('[dbInteraction.js]: User registered successfully'))
-                .catch(err => console.error('[dbInteraction.js]: Error inserting user:', err));
+                ownsGame: false,
+                
+                ingame: {
+                    inventory: {},
+                    currency: 0
+                }
+            });
+            console.log('[dbInteraction.js]: User registered successfully');
         }
-        
+
         return true;
-    }catch(error){
-        console.warn("[dbInteraction.js]: Error during register sequence");
+    } catch (error) {
+        console.warn('[dbInteraction.js]: Error during register sequence');
         return false;
     }
-
 }
 
-async function login(email, password){
-    const collection = db.collection("accounts")
-    try{
 
-        const userFound = await collection.findOne({
-            email: email,
-            password: password
-        })
+async function login(email, password) {
+    try {
+        const userRef = db.collection('accounts');
+        const userSnapshot = await userRef.where('email', '==', email).get();
 
-        if(await userFound)
-        {
-            return true
-        }else{
-            return false
+        if (userSnapshot.empty) {
+            console.log('[dbInteraction.js]: User not found');
+            return false;
         }
-    }
-    catch(error){
-        console.warn("[dbInteraction.js]: Error during login sequence");
+
+        const user = userSnapshot.docs[0].data();
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (isPasswordValid) {
+            console.log('[dbInteraction.js]: Login successful');
+            return true;
+        } else {
+            console.log('[dbInteraction.js]: Invalid password');
+            return false;
+        }
+    } catch (error) {
+        console.warn('[dbInteraction.js]: Error during login sequence');
         return false;
     }
 }
+
+
 async function getUserByEmail(email) {
     try {
-        const collection = db.collection('accounts'); // Directly get the collection
-        return await collection.findOne({ email });
+        const userRef = db.collection('accounts');
+        const userSnapshot = await userRef.where('email', '==', email).get();
+
+        if (!userSnapshot.empty) {
+            return userSnapshot.docs[0].data();
+        } else {
+            console.log('[dbInteraction.js]: User not found');
+            return null;
+        }
     } catch (error) {
         console.error('[dbInteraction.js]: Error fetching user by email:', error);
         throw error;
     }
 }
 
-
-
-module.exports = { register, login, init, reachable, getUserByEmail};
+module.exports = { register, login, init, reachable, getUserByEmail };
