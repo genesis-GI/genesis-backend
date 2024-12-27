@@ -341,28 +341,43 @@
                 const response = await fetch('/spectrum/channels');
                 if (response.ok) {
                     const channels = await response.json();
-                    const channelsList = document.getElementById('channels-list');
-                    channelsList.innerHTML = '';
-                    channels.forEach(channel => {
-                        const button = document.createElement('button');
-                        button.id = channel;
-                        button.innerHTML = `${channel} <span class="star" onclick="starChannel(event, '${channel}')">☆</span>`;
-                        if (document.getElementById('current-user').innerHTML.includes('Admin: true')) {
-                            const trashIcon = document.createElement('span');
-                            trashIcon.classList.add('trash');
-                            trashIcon.innerHTML = '🗑️';
-                            trashIcon.onclick = (event) => deleteChannel(event, channel);
-                            button.appendChild(trashIcon);
-                        }
-                        button.onclick = () => switchChannel(channel);
-                        channelsList.appendChild(button);
-                    });
+                    updateChannelsList(channels);
                 } else {
                     console.error('Failed to load channels:', response.statusText);
                 }
             } catch (error) {
                 console.error('Error loading channels:', error);
             }
+
+            // Listen for real-time updates
+            listenForChannelUpdates();
+        }
+
+        function updateChannelsList(channels) {
+            const channelsList = document.getElementById('channels-list');
+            channelsList.innerHTML = '';
+            channels.forEach(channel => {
+                const button = document.createElement('button');
+                button.id = channel;
+                button.innerHTML = `${channel} <span class="star" onclick="starChannel(event, '${channel}')">☆</span>`;
+                if (document.getElementById('current-user').innerHTML.includes('Admin: true')) {
+                    const trashIcon = document.createElement('span');
+                    trashIcon.classList.add('trash');
+                    trashIcon.innerHTML = '🗑️';
+                    trashIcon.onclick = (event) => deleteChannel(event, channel);
+                    button.appendChild(trashIcon);
+                }
+                button.onclick = () => switchChannel(channel);
+                channelsList.appendChild(button);
+            });
+        }
+
+        function listenForChannelUpdates() {
+            const eventSource = new EventSource('/spectrum/channels/updates');
+            eventSource.onmessage = function(event) {
+                const channels = JSON.parse(event.data);
+                updateChannelsList(channels);
+            };
         }
 
         async function loadStarredChannels(email) {
@@ -370,19 +385,34 @@
                 const response = await fetch(`/spectrum/starredChannels/${email}`);
                 if (response.ok) {
                     const starredChannels = await response.json();
-                    starredChannels.forEach(channel => {
-                        const star = document.querySelector(`#${channel} .star`);
-                        if (star) {
-                            star.classList.add('filled');
-                            star.innerText = '★';
-                        }
-                    });
+                    updateStarredChannels(starredChannels);
                 } else {
                     console.error('Failed to load starred channels:', response.statusText);
                 }
             } catch (error) {
                 console.error('Error loading starred channels:', error);
             }
+
+            // Listen for real-time updates
+            listenForStarredChannelUpdates(email);
+        }
+
+        function updateStarredChannels(starredChannels) {
+            starredChannels.forEach(channel => {
+                const star = document.querySelector(`#${channel} .star`);
+                if (star) {
+                    star.classList.add('filled');
+                    star.innerText = '★';
+                }
+            });
+        }
+
+        function listenForStarredChannelUpdates(email) {
+            const eventSource = new EventSource(`/spectrum/starredChannels/updates/${email}`);
+            eventSource.onmessage = function(event) {
+                const starredChannels = JSON.parse(event.data);
+                updateStarredChannels(starredChannels);
+            };
         }
 
         async function switchChannel(channel) {

@@ -315,6 +315,33 @@ app.get('/spectrum/motd/updates/:channel', async (req, res) => {
     });
 });
 
+app.get('/spectrum/channels/updates', async (req, res) => {
+    if (!await isLoggedIn(req)) {
+        return res.status(403).send('Access forbidden: You must be logged in');
+    }
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    spectrum.listenForChannelUpdates((channels) => {
+        res.write(`data: ${JSON.stringify(channels)}\n\n`);
+    });
+});
+
+app.get('/spectrum/starredChannels/updates/:email', async (req, res) => {
+    if (!await isLoggedIn(req)) {
+        return res.status(403).send('Access forbidden: You must be logged in');
+    }
+    const email = req.params.email;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    spectrum.listenForStarredChannelUpdates(email, (starredChannels) => {
+        res.write(`data: ${JSON.stringify(starredChannels)}\n\n`);
+    });
+});
+
 app.get('/logout', (req, res) => {
     res.clearCookie('email');
     res.clearCookie('username');

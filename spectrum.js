@@ -59,6 +59,27 @@ function listenForMOTDUpdates(channel, callback) {
     });
 }
 
+function listenForChannelUpdates(callback) {
+    db.getFirestore().listCollections().then(collections => {
+        const channels = collections
+            .filter(collection => collection.id.startsWith('spectrum-'))
+            .map(collection => collection.id.replace('spectrum-', ''));
+        callback(channels);
+    }).catch(error => {
+        console.error('Error fetching channels:', error);
+    });
+}
+
+function listenForStarredChannelUpdates(email, callback) {
+    const userRef = db.getUserRefByEmail(email);
+    userRef.onSnapshot((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            callback(data.starredChannels || []);
+        }
+    });
+}
+
 async function getMOTD(channel){
     let motdInfos = await db.getMOTD(channel);
     if (motdInfos && motdInfos.date) {
@@ -104,4 +125,4 @@ async function getStarredChannels(email) {
     return await db.getStarredChannels(email);
 }
 
-module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, listenForMOTDUpdates };
+module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, listenForMOTDUpdates, listenForChannelUpdates, listenForStarredChannelUpdates };
