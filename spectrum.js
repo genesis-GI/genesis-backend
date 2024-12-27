@@ -45,6 +45,20 @@ function formatTime(seconds) {
     }
 }
 
+function listenForMOTDUpdates(channel, callback) {
+    const motdRef = db.getMOTDRef(channel);
+    motdRef.onSnapshot((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            const motdInfos = {
+                message: data.message,
+                lastChanged: formatTime((Date.now() - data.date.toDate().getTime()) / 1000)
+            };
+            callback(motdInfos);
+        }
+    });
+}
+
 async function getMOTD(channel){
     let motdInfos = await db.getMOTD(channel);
     if (motdInfos && motdInfos.date) {
@@ -90,4 +104,4 @@ async function getStarredChannels(email) {
     return await db.getStarredChannels(email);
 }
 
-module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels };
+module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, listenForMOTDUpdates };

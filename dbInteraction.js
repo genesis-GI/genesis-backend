@@ -8,6 +8,10 @@ admin.initializeApp({
 const db = admin.firestore(); 
 let reachable = true;
 
+function getMOTDRef(channel) {
+    return db.collection(`spectrum-${channel.toLowerCase()}`).doc('motd');
+}
+
 async function init() {
     try {
         console.warn('Connected to Firestore.');
@@ -272,4 +276,4 @@ async function getStarredChannels(email) {
     }
 }
 
-module.exports = { register, login, init, reachable, getUserByEmail, setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels };
+module.exports = { register, login, init, reachable, getUserByEmail, setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, getMOTDRef };

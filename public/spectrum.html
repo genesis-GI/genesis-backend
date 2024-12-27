@@ -406,6 +406,18 @@
             } catch (error) {
                 console.error('Error fetching MOTD:', error);
             }
+
+            // Listen for real-time updates
+            listenForMOTDUpdates(channel);
+        }
+
+        function listenForMOTDUpdates(channel) {
+            const eventSource = new EventSource(`/spectrum/motd/updates/${channel}`);
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                document.getElementById('message').innerHTML = parseMarkdown(data.message);
+                document.getElementById('lastChanged').innerText = data.lastChanged;
+            };
         }
 
         function parseMarkdown(text) {
