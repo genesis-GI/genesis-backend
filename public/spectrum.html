@@ -3,31 +3,216 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloudmesh / Spectrum</title>
-    <link rel="stylesheet" href="/css/styles.css">
+
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+        }
+        #sidebar {
+            width: 200px;
+            background-color: #162447;
+            padding: 10px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+        }
+        #sidebar h2 {
+            color: #e0e0e0;
+        }
+        #sidebar button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #1f4068;
+            color: #e0e0e0;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+        #sidebar button:hover {
+            background-color: #1b1b2f;
+        }
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            margin-left: 220px; /* Increased margin to add space */
+            margin-right: 220px; /* Increased margin to add space */
+        }
+        #userbar {
+            width: 200px;
+            background-color: #162447;
+            padding: 10px;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            right: 0;
+            top: 0;
+            bottom: 0;
+        }
+        #userbar h2 {
+            color: #e0e0e0;
+        }
+        .staff {
+            color: gold;
+        }
+        .backer {
+            color: #1f78d1;
+        }
+        #notification {
+            background-color: #1f4068;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        #notification h2 {
+            margin: 0;
+        }
+        #motd {
+            background-color: #2a2a4e;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        #motd h2 {
+            margin: 0;
+        }
+        #chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #1f4068;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        #chat-input {
+            display: flex;
+        }
+        #chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        #chat-input button {
+            padding: 10px;
+            background-color: #1b1b2f;
+            color: #e0e0e0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .star {
+            cursor: pointer;
+        }
+        .star.filled {
+            color: gold;
+        }
+    </style>
 </head>
 <body>
-    <div id="notification" class="notification warning">
-        <h2>Message of the Day <small id="lastChanged" style="color: gray; font-size: smaller;"></small></h2>
-        <p id="message"></p>
+    <div id="sidebar">
+        <h2>Channels</h2>
+        <div id="channels-list">
+            <button onclick="switchChannel('genesis-testing-chat')">genesis-testing-chat <span class="star" onclick="starChannel(event, 'genesis-testing-chat')">☆</span></button>
+            <button onclick="switchChannel('general-chat')">general-chat <span class="star" onclick="starChannel(event, 'general-chat')">☆</span></button>
+            <!-- Add more channels here -->
+        </div>
     </div>
-    <h1>What will we do here? </h1>
-    <h3>The Spectrum will be a platform to chat with other backers or Developers about the Game</h3>
-    <h3>The Team will post all news here in the future</h3>
-</body>
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            const response = await fetch('/spectrum/motd/genesis-testing-chat');
-            if (response.ok) {
-                const data = await response.json();
-                document.getElementById('message').innerText = data.message;
-                document.getElementById('lastChanged').innerText = data.lastChanged;
-            } else {
-                console.error('Failed to fetch MOTD:', response.statusText);
+    <div id="main-content">
+        <div id="current-channel">
+            <h2>Current Channel: <span id="currentChannelName">genesis-testing-chat</span></h2>
+        </div>
+        <div id="motd">
+            <h2>Message of the Day <small id="lastChanged" style="color: gray; font-size: smaller;"></small></h2>
+            <p id="message"></p>
+        </div>
+        <div id="chat">
+            <div id="chat-messages">
+                <!-- Chat messages will appear here -->
+            </div>
+            <div id="chat-input">
+                <input type="text" id="messageInput" placeholder="Message genesis-testing-chat">
+                <button>Send</button>
+            </div>
+        </div>
+    </div>
+    <div id="userbar">
+        <h2>Users</h2>
+        <h3>Staff</h3>
+        <p class="staff">Staff1</p>
+        <p class="staff">Staff2</p>
+        <!-- Add more staff here -->
+        <h3>Backers</h3>
+        <p class="backer">Backer1</p>
+        <p class="backer">Backer2</p>
+        <!-- Add more backers here -->
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            switchChannel('genesis-testing-chat');
+            sortChannels();
+        });
+
+        async function switchChannel(channel) {
+            console.log('Switching to channel:', channel);
+            document.getElementById('messageInput').placeholder = `Message ${channel}`;
+            document.getElementById('currentChannelName').innerText = channel;
+            try {
+                const response = await fetch(`/spectrum/motd/${channel}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('message').innerText = data.message;
+                    document.getElementById('lastChanged').innerText = data.lastChanged;
+                } else {
+                    console.error('Failed to fetch MOTD:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error fetching MOTD:', error);
             }
-        } catch (error) {
-            console.error('Error fetching MOTD:', error);
         }
-    });
-</script>
+
+        function starChannel(event, channel) {
+            event.stopPropagation();
+            const star = event.target;
+            const button = document.querySelector(`button[onclick="switchChannel('${channel}')"]`);
+            if (star.classList.contains('filled')) {
+                star.classList.remove('filled');
+                star.innerText = '☆';
+            } else {
+                star.classList.add('filled');
+                star.innerText = '★';
+            }
+            sortChannels();
+        }
+
+        function sortChannels() {
+            const channelsList = document.getElementById('channels-list');
+            const buttons = Array.from(channelsList.querySelectorAll('button'));
+            const starred = buttons.filter(button => button.querySelector('.star').classList.contains('filled'));
+            const unstarred = buttons.filter(button => !button.querySelector('.star').classList.contains('filled'));
+
+            starred.sort((a, b) => a.innerText.localeCompare(b.innerText));
+            unstarred.sort((a, b) => a.innerText.localeCompare(b.innerText));
+
+            channelsList.innerHTML = '';
+            starred.forEach(button => channelsList.appendChild(button));
+            unstarred.forEach(button => channelsList.appendChild(button));
+        }
+    </script>
+</body>
 </html>

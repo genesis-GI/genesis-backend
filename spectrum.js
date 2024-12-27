@@ -47,17 +47,16 @@ function formatTime(seconds) {
 }
 
 async function getMOTD(channel){
-/*     setTimeout(async () => {
-        motdInfos = await db.getMOTD();
-        await console.log('\nMOTD: ', motdInfos.message, '\n')
-        await console.log('\nDate: ', motdInfos.date, '\n')
-        const timeSinceLastUpdate = (Date.now() - motdInfos.date.toDate().getTime()) / 1000;
-        await console.log('Time since last update:', formatTime(timeSinceLastUpdate), '\n')
-    }, 800);    */
-
     motdInfos = await db.getMOTD(channel);
-    motdInfos.lastChanged = formatTime((Date.now() - motdInfos.date.toDate().getTime()) / 1000);
-    return motdInfos
+    if (motdInfos && motdInfos.date) {
+        motdInfos.lastChanged = formatTime((Date.now() - motdInfos.date.toDate().getTime()) / 1000);
+    } else {
+        motdInfos = {
+            message: "No message of the day available.",
+            lastChanged: "N/A"
+        };
+    }
+    return motdInfos;
 }
 
 async function setMOTD(message, channel){
@@ -66,9 +65,5 @@ async function setMOTD(message, channel){
             console.log('MOTD updated successfully to:', message);
         }); 
 }
-
-//setMOTD();
-//getMOTD();
-
 
 module.exports = { setMOTD, getMOTD };
