@@ -22,6 +22,9 @@
             left: 0;
             top: 0;
             bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         #sidebar h2 {
             color: #e0e0e0;
@@ -36,8 +39,9 @@
             cursor: pointer;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
-        #sidebar button:hover {
+        #sidebar button:hover, #sidebar button.active {
             background-color: #1b1b2f;
         }
         #main-content {
@@ -61,6 +65,14 @@
         #userbar h2 {
             color: #e0e0e0;
         }
+        .staff, .backer {
+            display: flex;
+            align-items: center;
+        }
+        .staff::before, .backer::before {
+            content: '👤';
+            margin-right: 5px;
+        }
         .staff {
             color: gold;
         }
@@ -68,22 +80,52 @@
             color: #1f78d1;
         }
         #notification {
-            background-color: #1f4068;
+            background-color: #28a745; /* Green color for success */
             padding: 10px;
             margin-bottom: 20px;
             border-radius: 5px;
+            color: #e0e0e0;
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
         }
-        #notification h2 {
-            margin: 0;
+        #notification.error {
+            background-color: #dc3545; /* Red color for error */
+        }
+        #notification.hidden {
+            display: none;
         }
         #motd {
             background-color: #2a2a4e;
             padding: 10px;
             margin-bottom: 20px;
             border-radius: 5px;
+            position: relative;
         }
         #motd h2 {
             margin: 0;
+        }
+        #editMotdButton {
+            position: absolute;
+            top: 0;
+            right: 220px; /* Adjusted to be next to the user bar */
+            padding: 10px;
+            background-color: #1f4068;
+            color: #e0e0e0;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #createChannelButton, #homeButton {
+            padding: 10px;
+            background-color: #1f4068;
+            color: #e0e0e0;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
         }
         #chat {
             flex: 1;
@@ -107,6 +149,8 @@
             border: none;
             border-radius: 5px;
             margin-right: 10px;
+            background-color: #2a2a4e;
+            color: #e0e0e0;
         }
         #chat-input button {
             padding: 10px;
@@ -122,20 +166,91 @@
         .star.filled {
             color: gold;
         }
+        .trash {
+            cursor: pointer;
+            color: red;
+            margin-left: 10px;
+            z-index: 1;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #2a2a4e;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 10px;
+            position: relative;
+        }
+        .modal-content textarea {
+            width: 100%;
+            height: 150px;
+            resize: vertical;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            background-color: #1f4068;
+            color: #e0e0e0;
+        }
+        .modal-content button {
+            padding: 10px;
+            background-color: #1b1b2f;
+            color: #e0e0e0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        a {
+            color: #1f78d1; /* Blue color for links */
+        }
+        a:visited {
+            color: #1f78d1; /* Ensure visited links are also blue */
+        }
     </style>
 </head>
 <body>
     <div id="sidebar">
-        <h2>Channels</h2>
-        <div id="channels-list">
-            <button onclick="switchChannel('genesis-testing-chat')">genesis-testing-chat <span class="star" onclick="starChannel(event, 'genesis-testing-chat')">☆</span></button>
-            <button onclick="switchChannel('general-chat')">general-chat <span class="star" onclick="starChannel(event, 'general-chat')">☆</span></button>
-            <!-- Add more channels here -->
+        <div>
+            <h2>Channels</h2>
+            <div id="channels-list">
+                <!-- Channels will be dynamically loaded here -->
+            </div>
+        </div>
+        <div>
+            <button id="createChannelButton" onclick="openCreateChannelModal()">Create Channel</button>
+            <button id="homeButton" onclick="window.location.href='/'">Home</button>
         </div>
     </div>
     <div id="main-content">
         <div id="current-channel">
             <h2>Current Channel: <span id="currentChannelName">genesis-testing-chat</span></h2>
+            <button id="editMotdButton" style="display: none;" onclick="openMotdEditor()">Edit MOTD</button>
         </div>
         <div id="motd">
             <h2>Message of the Day <small id="lastChanged" style="color: gray; font-size: smaller;"></small></h2>
@@ -154,29 +269,136 @@
     <div id="userbar">
         <h2>Users</h2>
         <h3>Staff</h3>
-        <p class="staff">Staff1</p>
-        <p class="staff">Staff2</p>
-        <!-- Add more staff here -->
+        <div id="staff-list">
+            <!-- Staff users will be dynamically added here -->
+        </div>
         <h3>Backers</h3>
-        <p class="backer">Backer1</p>
-        <p class="backer">Backer2</p>
-        <!-- Add more backers here -->
+        <div id="backers-list">
+            <!-- Backers users will be dynamically added here -->
+        </div>
+        <h3>Current User</h3>
+        <div id="current-user">
+            <!-- Current user info will be dynamically added here -->
+        </div>
     </div>
+
+    <!-- The Modal -->
+    <div id="motdModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMotdEditor()">&times;</span>
+            <h2>Edit Message of the Day</h2>
+            <textarea id="motdTextarea"></textarea>
+            <button onclick="saveMotd()">Save</button>
+        </div>
+    </div>
+
+    <!-- Create Channel Modal -->
+    <div id="createChannelModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCreateChannelModal()">&times;</span>
+            <h2>Create New Channel</h2>
+            <input type="text" id="newChannelName" placeholder="Channel Name">
+            <button onclick="createChannel()">Create</button>
+        </div>
+    </div>
+
+    <div id="notification" class="hidden"></div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            checkCurrentUser();
+            loadChannels();
             switchChannel('genesis-testing-chat');
-            sortChannels();
+            fetchUsers();
         });
+
+        async function checkCurrentUser() {
+            try {
+                const response = await fetch('/spectrum/currentUser');
+                if (response.ok) {
+                    const user = await response.json();
+                    const currentUserDiv = document.getElementById('current-user');
+                    currentUserDiv.innerHTML = `<p>Email: ${user.email}</p><p>Username: ${user.username}</p><p>Admin: ${user.admin}</p>`;
+                    if (user.admin) {
+                        document.getElementById('editMotdButton').style.display = 'block';
+                        document.getElementById('createChannelButton').style.display = 'block';
+                    } else {
+                        document.getElementById('createChannelButton').style.display = 'none';
+                    }
+                    await loadStarredChannels(user.email);
+                    sortChannels();
+                } else {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Error fetching current user:', error);
+                window.location.href = '/';
+            }
+        }
+
+        async function loadChannels() {
+            try {
+                const response = await fetch('/spectrum/channels');
+                if (response.ok) {
+                    const channels = await response.json();
+                    const channelsList = document.getElementById('channels-list');
+                    channelsList.innerHTML = '';
+                    channels.forEach(channel => {
+                        const button = document.createElement('button');
+                        button.id = channel;
+                        button.innerHTML = `${channel} <span class="star" onclick="starChannel(event, '${channel}')">☆</span>`;
+                        if (document.getElementById('current-user').innerHTML.includes('Admin: true')) {
+                            const trashIcon = document.createElement('span');
+                            trashIcon.classList.add('trash');
+                            trashIcon.innerHTML = '🗑️';
+                            trashIcon.onclick = (event) => deleteChannel(event, channel);
+                            button.appendChild(trashIcon);
+                        }
+                        button.onclick = () => switchChannel(channel);
+                        channelsList.appendChild(button);
+                    });
+                } else {
+                    console.error('Failed to load channels:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error loading channels:', error);
+            }
+        }
+
+        async function loadStarredChannels(email) {
+            try {
+                const response = await fetch(`/spectrum/starredChannels/${email}`);
+                if (response.ok) {
+                    const starredChannels = await response.json();
+                    starredChannels.forEach(channel => {
+                        const star = document.querySelector(`#${channel} .star`);
+                        if (star) {
+                            star.classList.add('filled');
+                            star.innerText = '★';
+                        }
+                    });
+                } else {
+                    console.error('Failed to load starred channels:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error loading starred channels:', error);
+            }
+        }
 
         async function switchChannel(channel) {
             console.log('Switching to channel:', channel);
             document.getElementById('messageInput').placeholder = `Message ${channel}`;
             document.getElementById('currentChannelName').innerText = channel;
+            document.querySelectorAll('#channels-list button').forEach(button => button.classList.remove('active'));
+            const channelButton = document.getElementById(channel);
+            if (channelButton) {
+                channelButton.classList.add('active');
+            }
             try {
                 const response = await fetch(`/spectrum/motd/${channel}`);
                 if (response.ok) {
                     const data = await response.json();
-                    document.getElementById('message').innerText = data.message;
+                    document.getElementById('message').innerHTML = parseMarkdown(data.message);
                     document.getElementById('lastChanged').innerText = data.lastChanged;
                 } else {
                     console.error('Failed to fetch MOTD:', response.statusText);
@@ -186,18 +408,59 @@
             }
         }
 
-        function starChannel(event, channel) {
+        function parseMarkdown(text) {
+            const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+            const newlinePattern = /\n/g;
+            return text.replace(linkPattern, '<a href="$2" target="_blank">$1</a>').replace(newlinePattern, '<br>');
+        }
+
+        async function starChannel(event, channel) {
             event.stopPropagation();
             const star = event.target;
             const button = document.querySelector(`button[onclick="switchChannel('${channel}')"]`);
-            if (star.classList.contains('filled')) {
+            const isStarred = star.classList.contains('filled');
+            if (isStarred) {
                 star.classList.remove('filled');
                 star.innerText = '☆';
             } else {
                 star.classList.add('filled');
                 star.innerText = '★';
             }
+            await saveStarredChannel(channel, !isStarred);
             sortChannels();
+        }
+
+        async function saveStarredChannel(channel, isStarred) {
+            try {
+                const response = await fetch(`/spectrum/starChannel/${channel}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ isStarred })
+                });
+                if (!response.ok) {
+                    console.error('Failed to save starred channel:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error saving starred channel:', error);
+            }
+        }
+
+        async function deleteChannel(event, channel) {
+            event.stopPropagation();
+            try {
+                const response = await fetch(`/spectrum/deleteChannel/${channel}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showNotification('Channel deleted successfully', 'success');
+                    loadChannels();
+                } else {
+                    showNotification('Failed to delete channel', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting channel:', error);
+                showNotification('Error deleting channel', 'error');
+            }
         }
 
         function sortChannels() {
@@ -212,6 +475,119 @@
             channelsList.innerHTML = '';
             starred.forEach(button => channelsList.appendChild(button));
             unstarred.forEach(button => channelsList.appendChild(button));
+        }
+
+        async function fetchUsers() {
+            try {
+                const response = await fetch('/spectrum/users');
+                if (response.ok) {
+                    const users = await response.json();
+                    const staffList = document.getElementById('staff-list');
+                    const backersList = document.getElementById('backers-list');
+                    staffList.innerHTML = '';
+                    backersList.innerHTML = '';
+                    users.staff.forEach(user => {
+                        const userElement = document.createElement('p');
+                        userElement.innerText = user;
+                        userElement.classList.add('staff');
+                        staffList.appendChild(userElement);
+                    });
+                    users.backers.forEach(user => {
+                        const userElement = document.createElement('p');
+                        userElement.innerText = user;
+                        userElement.classList.add('backer');
+                        backersList.appendChild(userElement);
+                    });
+                } else {
+                    console.error('Failed to fetch users:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error fetching users:', error);
+            }
+        }
+
+        function openMotdEditor() {
+            const motdText = document.getElementById('message').innerHTML;
+            const markdownText = motdText.replace(/<a href="([^"]+)" target="_blank">([^<]+)<\/a>/g, '[$2]($1)').replace(/<br>/g, '\n');
+            document.getElementById('motdTextarea').value = markdownText;
+            document.getElementById('motdModal').style.display = 'block';
+        }
+
+        function closeMotdEditor() {
+            document.getElementById('motdModal').style.display = 'none';
+        }
+
+        async function saveMotd() {
+            const newMotd = document.getElementById('motdTextarea').value;
+            const channel = document.getElementById('currentChannelName').innerText;
+            try {
+                const response = await fetch(`/spectrum/motd/${channel}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: newMotd })
+                });
+                if (response.ok) {
+                    showNotification('MOTD updated successfully', 'success');
+                    switchChannel(channel);
+                    closeMotdEditor();
+                } else {
+                    showNotification('Failed to update MOTD', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating MOTD:', error);
+                showNotification('Error updating MOTD', 'error');
+            }
+        }
+
+        function openCreateChannelModal() {
+            document.getElementById('createChannelModal').style.display = 'block';
+        }
+
+        function closeCreateChannelModal() {
+            document.getElementById('createChannelModal').style.display = 'none';
+        }
+
+        async function createChannel() {
+            const newChannelName = document.getElementById('newChannelName').value;
+            try {
+                const response = await fetch(`/spectrum/createChannel/${newChannelName}`, { method: 'POST' });
+                if (response.ok) {
+                    showNotification('Channel created successfully', 'success');
+                    closeCreateChannelModal();
+                    // Add the new channel button to the list
+                    const channelsList = document.getElementById('channels-list');
+                    const newButton = document.createElement('button');
+                    newButton.id = newChannelName;
+                    newButton.innerHTML = `${newChannelName} <span class="star" onclick="starChannel(event, '${newChannelName}')">☆</span>`;
+                    if (document.getElementById('current-user').innerHTML.includes('Admin: true')) {
+                        const trashIcon = document.createElement('span');
+                        trashIcon.classList.add('trash');
+                        trashIcon.innerHTML = '🗑️';
+                        trashIcon.onclick = (event) => deleteChannel(event, newChannelName);
+                        newButton.appendChild(trashIcon);
+                    }
+                    newButton.onclick = () => switchChannel(newChannelName);
+                    channelsList.appendChild(newButton);
+                    sortChannels();
+                } else {
+                    showNotification('Failed to create channel', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating channel:', error);
+                showNotification('Error creating channel', 'error');
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.innerText = message;
+            notification.className = type === 'success' ? '' : 'error';
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 3000);
         }
     </script>
 </body>

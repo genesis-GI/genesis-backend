@@ -1,4 +1,3 @@
-const { set } = require('mongoose');
 const db = require('./dbInteraction');
 
 function formatTime(seconds) {
@@ -47,7 +46,7 @@ function formatTime(seconds) {
 }
 
 async function getMOTD(channel){
-    motdInfos = await db.getMOTD(channel);
+    let motdInfos = await db.getMOTD(channel);
     if (motdInfos && motdInfos.date) {
         motdInfos.lastChanged = formatTime((Date.now() - motdInfos.date.toDate().getTime()) / 1000);
     } else {
@@ -61,9 +60,34 @@ async function getMOTD(channel){
 
 async function setMOTD(message, channel){
     await db.setMOTD(message, channel)
-        .then(() => {
-            console.log('MOTD updated successfully to:', message);
-        }); 
 }
 
-module.exports = { setMOTD, getMOTD };
+async function getUsers() {
+    return await db.getUsers();
+}
+
+async function getChannel(channel) {
+    return await db.getChannel(channel);
+}
+
+async function createChannel(channel) {
+    return await db.createChannel(channel);
+}
+
+async function deleteChannel(channel) {
+    return await db.deleteChannel(channel);
+}
+
+async function getChannels() {
+    return await db.getChannels();
+}
+
+async function starChannel(email, channel, isStarred) {
+    await db.starChannel(email, channel, isStarred);
+}
+
+async function getStarredChannels(email) {
+    return await db.getStarredChannels(email);
+}
+
+module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels };
