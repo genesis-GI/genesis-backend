@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
+const spectrum = require('./spectrum')
+
 
 const app = express();
 const PORT = 8088;
@@ -204,6 +206,18 @@ app.post('/login/:email/:password', async (req, res) => {
         res.status(503).send("Error 503: Service (Database) unavailable. Error: " + error);
     }
 });
+
+app.get('/spectrum/motd/:channel', async(req, res) => {
+    const channel = req.params.channel;
+
+    res.send(await spectrum.getMOTD(channel))
+})
+
+app.post('/spectrum/motd/:channel/:message', async(req, res) => {
+    await spectrum.setMOTD(req.params.message, req.params.channel)
+
+    res.send('Channel MOTD updated successfully')
+})
 
 app.get('/logout', (req, res) => {
     res.clearCookie('email');

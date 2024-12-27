@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 
 
 admin.initializeApp({
-  credential: admin.credential.cert('./serviceAccountKey.json'),
+  credential: admin.credential.cert('./fireBaseInfo.json'),
 });
 
 const db = admin.firestore(); 
@@ -110,9 +110,9 @@ async function getUserByEmail(email) {
     }
 }
 
-async function setMOTD(message){
+async function setMOTD(message, channel){
     try{
-        motdRef = db.collection('motd')
+        motdRef = db.collection(channel)
         const motd = motdRef.doc('motd')
         motd.set({
             message: message,
@@ -124,13 +124,14 @@ async function setMOTD(message){
     }
 }
 
-async function getMOTD(){
+async function getMOTD(channel){
     motdInfos = {
         message: null,
-        date: null
+        date: null,
+        lastChanged: null
     }
     try {
-        const motdRef = db.collection('motd').doc('motd');
+        const motdRef = db.collection(channel).doc('motd');
         const motdDoc = await motdRef.get(); 
 
         if (motdDoc.exists) { 

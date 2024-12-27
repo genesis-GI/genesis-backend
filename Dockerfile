@@ -13,6 +13,6 @@ COPY . .
 
 RUN npm install
 
-EXPOSE 8080
+EXPOSE 8088
 
 CMD [ "node", "main.js" ]
