@@ -52,7 +52,8 @@ async function register(username, email, password) {
                 ingame: {
                     inventory: {},
                     currency: 0
-                }
+                },
+                playerLocation: Vector3(0, 0, 0),
             });
             console.log('[dbInteraction.js]: User registered successfully');
         }
@@ -109,4 +110,41 @@ async function getUserByEmail(email) {
     }
 }
 
-module.exports = { register, login, init, reachable, getUserByEmail };
+async function setMOTD(message){
+    try{
+        motdRef = db.collection('motd')
+        const motd = motdRef.doc('motd')
+        motd.set({
+            message: message,
+            date: new Date()
+        })
+    }
+    catch(error){
+        console.log("[dbInteraction.js] Error while trying to write do DB")
+    }
+}
+
+async function getMOTD(){
+    motdInfos = {
+        message: null,
+        date: null
+    }
+    try {
+        const motdRef = db.collection('motd').doc('motd');
+        const motdDoc = await motdRef.get(); 
+
+        if (motdDoc.exists) { 
+            motdInfos.message = motdDoc.data().message;
+            motdInfos.date = motdDoc.data().date;
+            return motdInfos;
+        } else {
+            console.log("[dbInteraction.js] MOTD document does not exist");
+            return null; 
+        }
+    } catch (error) {
+        console.log("[dbInteraction.js] Error while trying to read message of the day", error);
+        return null; 
+    }
+}
+
+module.exports = { register, login, init, reachable, getUserByEmail, setMOTD, getMOTD };

@@ -12,9 +12,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());  // Enable cookie parsing
 
 
-app.get('/', (req, res) => {
-    if (!req.cookies.loggedIn) {
-        //return res.status(403).send('Access forbidden: You must be logged in');
+async function isLoggedIn(req) {
+    const { email, username, password } = req.cookies;
+    if (!email || !username || !password) {
+        return false;
+    }
+    
+    return await db.login(email, password);
+}
+
+app.get('/', async (req, res) => {
+    if (!await isLoggedIn(req)) {
         return res.sendFile(path.join(__dirname, 'public', 'landing.html'));
     }
     res.sendFile(path.join(__dirname, 'public', 'loggedIn.html'));
@@ -29,16 +37,16 @@ app.get('/register', (req, res) => {
 });
 
 // Protect the download route with cookies
-app.get('/download', (req, res) => {
-    if (!req.cookies.loggedIn) {
+app.get('/download', async (req, res) => {
+    if (!await isLoggedIn(req)) {
         return res.status(403).send('Access forbidden: You must be logged in');
     }
     res.sendFile(path.join(__dirname, "public/launcherdownload.html"));
 });
 
 // New /spectrum route with login check
-app.get('/spectrum', (req, res) => {
-    if (!req.cookies.loggedIn) {
+app.get('/spectrum', async (req, res) => {
+    if (!await isLoggedIn(req)) {
         return res.status(403).send('Access forbidden: You must be logged in');
     }
     res.sendFile(path.join(__dirname, "public/spectrum.html"));
@@ -53,24 +61,6 @@ app.post('/register/:username/:email/:password', async (req, res) => {
         res.status(200).send('User registered');
     } else {
         res.status(401).send("Error during register sequence");
-    }
-});
-
-app.post('/login/:email/:password', async (req, res) => {
-    const email = req.params.email;
-    const password = req.params.password;
-
-    try {
-        if (!await db.login(email, password)) {
-            res.status(401).send('Invalid credentials');
-        } else {
-            console.warn("[main.js:46]: Login successful");
-            // Set a cookie to indicate the user is logged in
-            res.cookie('loggedIn', true, { httpOnly: true, secure: true }); // secure should be true in production
-            res.status(200).send('Login successful');
-        }
-    } catch (error) {
-        res.status(503).send("Error 503: Service (Database) unavailable. Error: " + error);
     }
 });
 
@@ -194,17 +184,33 @@ app.get('/api/download/:game/:version', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-app.get('/logout', (req, res) => {
-    res.clearCookie('loggedIn'); 
-    res.redirect('/');  
+
+
+app.post('/login/:email/:password', async (req, res) => {
+    const email = req.params.email;
+    const password = req.params.password;
+
+    try {
+        if (!await db.login(email, password)) {
+            res.status(401).send('Invalid credentials');
+        } else {
+            const user = await db.getUserByEmail(email);
+            res.cookie('email', email, { httpOnly: true, secure: true }); // secure should be true in production
+            res.cookie('username', user.username, { httpOnly: true, secure: true });
+            res.cookie('password', password, { httpOnly: true, secure: true }); // Not recommended to store plaintext passwords in cookies
+            res.status(200).send('Login successful');
+        }
+    } catch (error) {
+        res.status(503).send("Error 503: Service (Database) unavailable. Error: " + error);
+    }
 });
 
-app.get('/api/motd', (req, res) => {
-    res.json({ motd: "MOTD Feature comming soon" });
-})
-
-
-
+app.get('/logout', (req, res) => {
+    res.clearCookie('email');
+    res.clearCookie('username');
+    res.clearCookie('password');
+    res.redirect('/');
+});
 
 app.listen(PORT, async () => {
     await db.init();
