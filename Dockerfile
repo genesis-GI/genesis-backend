@@ -7,12 +7,12 @@ RUN apt-get update && \
     apt-get clean && \
     npm install pm2 -g
 
-#WORKDIR /app
+WORKDIR /app
 
-COPY . .
+COPY . . 
 
 RUN npm install
 
-EXPOSE 8080
+EXPOSE 8088
 
-CMD ["pm2-runtime", "start", "main.js", "-i", "max", "--name", "genesis-backend"]
+CMD [ "node", "main.js" ]
