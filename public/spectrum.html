@@ -308,7 +308,26 @@
     <div id="notification" class="hidden"></div>
 
     <script>
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function checkAdminStatus() {
+            const isAdmin = getCookie('admin') === 'true';
+            if (isAdmin) {
+                document.getElementById('editMotdButton').style.display = 'block';
+                document.getElementById('createChannelButton').style.display = 'block';
+            } else {
+                document.getElementById('editMotdButton').style.display = 'none';
+                document.getElementById('createChannelButton').style.display = 'none';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            checkAdminStatus();
             checkCurrentUser();
             loadChannels();
             switchChannel('genesis-testing-chat');
@@ -421,6 +440,7 @@
                 const response = await fetch('/spectrum/currentUser');
                 if (response.ok) {
                     const user = await response.json();
+                    console.log('Current user:', user);
                     const currentUserDiv = document.getElementById('current-user');
                     currentUserDiv.innerHTML = `<p>Email: ${user.email}</p><p>Username: ${user.username}</p><p>Admin: ${user.admin}</p>`;
                     if (user.admin) {
@@ -432,11 +452,12 @@
                     await loadStarredChannels(user.email);
                     sortChannels();
                 } else {
-                    window.location.href = '/';
+                    console.error('Failed to fetch current user:', response.statusText);
+
                 }
             } catch (error) {
                 console.error('Error fetching current user:', error);
-                window.location.href = '/';
+
             }
         }
 

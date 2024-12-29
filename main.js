@@ -218,10 +218,10 @@ app.post('/login/:email/:password', async (req, res) => {
             res.status(401).send('Invalid credentials');
         } else {
             const user = await db.getUserByEmail(email);
-            res.cookie('email', email, { httpOnly: true, secure: false, sameSite: 'None' });
-            res.cookie('username', user.username, { httpOnly: true, secure: false, sameSite: 'None' });
-            res.cookie('password', password, { httpOnly: true, secure: false, sameSite: 'None' });
-            res.cookie('admin', user.admin, { httpOnly: true, secure: false, sameSite: 'None' });
+            res.cookie('email', email, { httpOnly: false, secure: true });
+            res.cookie('username', user.username, { httpOnly: false, secure: true });
+            res.cookie('password', password, { httpOnly: false, secure: true });
+            res.cookie('admin', user.admin, { httpOnly: false, secure: true });
             res.status(200).send('Login successful');
         }
     } catch (error) {
@@ -306,8 +306,13 @@ app.get('/spectrum/starredChannels/:email', async(req, res) => {
 });
 
 app.get('/spectrum/users', async (req, res) => {
-    const users = await spectrum.getUsers();
-    res.json(users);
+    try {
+        const users = await spectrum.getUsers();
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send('Internal Server Error');
+    }
 });
 
 app.get('/spectrum/currentUser', async (req, res) => {
