@@ -234,7 +234,7 @@
         }
     </style>
 </head>
-<body>
+<body onload="initSpectrum()">
     <div id="sidebar">
         <div>
             <h2>Channels</h2>
@@ -261,18 +261,21 @@
                 <!-- Chat messages will appear here -->
             </div>
             <div id="chat-input">
-                <input type="text" id="messageInput" placeholder="Message genesis-testing-chat">
-                <button>Send</button>
+                <input type="text" id="messageInput" placeholder="Message">
+                <button onclick="sendMessage()">Send</button>
             </div>
         </div>
     </div>
+    <div id="userCounts">
+        <h2>Total Users: <span id="totalCount"></span></h2>
+    </div>
     <div id="userbar">
         <h2>Users</h2>
-        <h3>Staff</h3>
+        <h3>Staff (<span id="staffCount"></span>)</h3>
         <div id="staff-list">
             <!-- Staff users will be dynamically added here -->
         </div>
-        <h3>Backers</h3>
+        <h3>Backers (<span id="backersCount"></span>)</h3>
         <div id="backers-list">
             <!-- Backers users will be dynamically added here -->
         </div>
@@ -385,6 +388,8 @@
 
             // Listen for real-time updates
             listenForMOTDUpdates(channel);
+            listenForMessageUpdates(channel);
+            loadMessages(channel);
         }
 
         function updateLastChanged(date) {
@@ -417,23 +422,27 @@
             try {
                 const response = await fetch('/spectrum/currentUser');
                 if (response.ok) {
-                    const user = await response.json();
-                    const currentUserDiv = document.getElementById('current-user');
-                    currentUserDiv.innerHTML = `<p>Email: ${user.email}</p><p>Username: ${user.username}</p><p>Admin: ${user.admin}</p>`;
-                    if (user.admin) {
-                        document.getElementById('editMotdButton').style.display = 'block';
-                        document.getElementById('createChannelButton').style.display = 'block';
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const user = await response.json();
+                        const currentUserDiv = document.getElementById('current-user');
+                        currentUserDiv.innerHTML = `<p>Email: ${user.email}</p><p>Username: ${user.username}</p><p>Admin: ${user.admin}</p>`;
+                        if (user.admin) {
+                            document.getElementById('editMotdButton').style.display = 'block';
+                            document.getElementById('createChannelButton').style.display = 'block';
+                        } else {
+                            document.getElementById('createChannelButton').style.display = 'none';
+                        }
+                        await loadStarredChannels(user.email);
+                        sortChannels();
                     } else {
-                        document.getElementById('createChannelButton').style.display = 'none';
+                        console.error('Invalid content type:', contentType);
                     }
-                    await loadStarredChannels(user.email);
-                    sortChannels();
                 } else {
-                    window.location.href = '/';
+                    console.error('Failed to fetch current user:', response.statusText);
                 }
             } catch (error) {
                 console.error('Error fetching current user:', error);
-                window.location.href = '/';
             }
         }
 
@@ -441,8 +450,13 @@
             try {
                 const response = await fetch('/spectrum/channels');
                 if (response.ok) {
-                    const channels = await response.json();
-                    updateChannelsList(channels);
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const channels = await response.json();
+                        updateChannelsList(channels);
+                    } else {
+                        console.error('Invalid content type:', contentType);
+                    }
                 } else {
                     console.error('Failed to load channels:', response.statusText);
                 }
@@ -583,23 +597,31 @@
             try {
                 const response = await fetch('/spectrum/users');
                 if (response.ok) {
-                    const users = await response.json();
-                    const staffList = document.getElementById('staff-list');
-                    const backersList = document.getElementById('backers-list');
-                    staffList.innerHTML = '';
-                    backersList.innerHTML = '';
-                    users.staff.forEach(user => {
-                        const userElement = document.createElement('p');
-                        userElement.innerText = user;
-                        userElement.classList.add('staff');
-                        staffList.appendChild(userElement);
-                    });
-                    users.backers.forEach(user => {
-                        const userElement = document.createElement('p');
-                        userElement.innerText = user;
-                        userElement.classList.add('backer');
-                        backersList.appendChild(userElement);
-                    });
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const users = await response.json();
+                        const staffList = document.getElementById('staff-list');
+                        const backersList = document.getElementById('backers-list');
+                        staffList.innerHTML = '';
+                        backersList.innerHTML = '';
+                        users.staff.forEach(user => {
+                            const userElement = document.createElement('p');
+                            userElement.innerText = user.username;
+                            userElement.classList.add('staff');
+                            staffList.appendChild(userElement);
+                        });
+                        users.backers.forEach(user => {
+                            const userElement = document.createElement('p');
+                            userElement.innerText = user.username;
+                            userElement.classList.add('backer');
+                            backersList.appendChild(userElement);
+                        });
+                        document.getElementById('staffCount').innerText = users.staff.length;
+                        document.getElementById('backersCount').innerText = users.backers.length;
+                        document.getElementById('totalCount').innerText = users.staff.length + users.backers.length;
+                    } else {
+                        console.error('Invalid content type:', contentType);
+                    }
                 } else {
                     console.error('Failed to fetch users:', response.statusText);
                 }
@@ -696,6 +718,99 @@
             const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
             const newlinePattern = /\n/g;
             return text.replace(linkPattern, '<a href="$2" target="_blank">$1</a>').replace(newlinePattern, '<br>');
+        }
+
+        function initSpectrum() {
+            const pathParts = window.location.pathname.split('/');
+            const channel = pathParts[pathParts.length - 1] || 'genesis-testing-chat';
+            checkCurrentUser();
+            loadChannels();
+            switchChannel(channel);
+            fetchUsers();
+            listenForMessageUpdates(channel);
+            loadMessages(channel);
+        }
+
+        function loadMessages(channel) {
+            fetch(`/spectrum/${channel}/messages`)
+                .then(res => res.json())
+                .then(data => updateMessagesList(data))
+                .catch(console.error);
+        }
+
+        function listenForMessageUpdates(channel) {
+            const eventSource = new EventSource(`/spectrum/${channel}/messages/updates`);
+            eventSource.onmessage = function(event) {
+                const messages = JSON.parse(event.data);
+                updateMessagesList(messages);
+            };
+        }
+
+        function updateMessagesList(messages) {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = '';
+            messages.forEach(msg => {
+                const div = document.createElement('div');
+                const date = new Date(msg.createdAt._seconds * 1000);
+                div.innerHTML = `
+                    <strong>${msg.username}</strong> [${date.toLocaleString()}]:
+                    ${msg.text}
+                    <span style="color:red; cursor:pointer;" onclick="deleteMessage('${msg.id}')"> (delete)</span>
+                    <span style="color:blue; cursor:pointer;" onclick="editMessagePrompt('${msg.id}', '${msg.text}')"> (edit)</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function sendMessage() {
+            const channel = document.getElementById('currentChannelName').innerText;
+            const text = document.getElementById('messageInput').value;
+            fetch(`/spectrum/${channel}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            }).then(() => {
+                document.getElementById('messageInput').value = '';
+            }).catch(console.error);
+        }
+
+        function deleteMessage(id) {
+            const channel = document.getElementById('currentChannelName').innerText;
+            fetch(`/spectrum/${channel}/messages/${id}`, { method: 'DELETE' })
+                .catch(console.error);
+        }
+
+        function editMessagePrompt(id, oldText) {
+            const newText = prompt('Edit message:', oldText);
+            if (newText !== null) {
+                const channel = document.getElementById('currentChannelName').innerText;
+                fetch(`/spectrum/${channel}/messages/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: newText })
+                }).catch(console.error);
+            }
+        }
+
+        // Override updateUsers to also set counts
+        function updateUsers(users) {
+            document.getElementById('staff-list').innerHTML = '';
+            document.getElementById('backers-list').innerHTML = '';
+            users.staff.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 'staff';
+                div.innerText = u;
+                document.getElementById('staff-list').appendChild(div);
+            });
+            users.backers.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 'backer';
+                div.innerText = u;
+                document.getElementById('backers-list').appendChild(div);
+            });
+            document.getElementById('staffCount').innerText = users.staff.length;
+            document.getElementById('backersCount').innerText = users.backers.length;
+            document.getElementById('totalCount').innerText = users.staff.length + users.backers.length;
         }
     </script>
 </body>

@@ -17,7 +17,13 @@ function getMOTDRef(channel) {
 }
 
 function getUserRefByEmail(email) {
-    return db.collection('accounts').where('email', '==', email);
+    return db.collection('accounts').where('email', '==', email).limit(1).get().then(snapshot => {
+        if (!snapshot.empty) {
+            return snapshot.docs[0].ref;
+        } else {
+            throw new Error('User not found');
+        }
+    });
 }
 
 async function init() {
@@ -284,4 +290,78 @@ async function getStarredChannels(email) {
     }
 }
 
-module.exports = { register, login, init, reachable, getUserByEmail, setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, getMOTDRef, getUserRefByEmail, getFirestore };
+async function getMessages(channel) {
+    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list');
+    const snapshot = await msgsRef.orderBy('createdAt', 'asc').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function createMessage(channel, username, text) {
+    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list');
+    const newMsg = {
+        username,
+        text,
+        createdAt: new Date()
+    };
+    const docRef = await msgsRef.add(newMsg);
+    return { id: docRef.id, ...newMsg };
+}
+
+async function updateMessage(channel, id, text) {
+    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list');
+    await msgsRef.doc(id).update({ text });
+}
+
+async function deleteMessage(channel, id) {
+    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list');
+    await msgsRef.doc(id).delete();
+}
+
+function listenForMessages(channel, callback) {
+    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list').orderBy('createdAt', 'asc');
+    msgsRef.onSnapshot(snapshot => {
+        const messages = [];
+        snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
+        callback(messages);
+    });
+}
+
+
+async function fetchRemoteConfig() {
+    try {
+        const remoteConfig = admin.remoteConfig();
+        // Abrufen der aktuellen Vorlage
+        const template = await remoteConfig.getTemplate();
+        
+        // Alle Parameter in einer JSON-Variable speichern
+        const parameters = template.parameters;
+
+
+        const configJson = {};
+        for (const key in parameters) {
+            configJson[key] = parameters[key].defaultValue 
+                ? parameters[key].defaultValue.value 
+                : null;
+        }
+
+        return configJson;
+    } catch (error) {
+        console.error("Fehler beim Abrufen der Remote Config:", error);
+        throw error;
+    }
+}
+
+async function getGameConfig() {
+    try {
+        const rawData = await fetchRemoteConfig();
+        if (!rawData || typeof rawData !== 'object' || !rawData.gameConfig) {
+            throw new Error("Invalid remote config data: 'gameConfig' missing");
+        }
+        return JSON.parse(rawData.gameConfig);
+    } catch (error) {
+        console.error("[dbInteraction.js]: Error retrieving game config:", error);
+        throw error;
+    }
+}
+
+module.exports = { fetchRemoteConfig, register, login, init, reachable, getUserByEmail, setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, getMOTDRef, getUserRefByEmail, getFirestore, getMessages, createMessage, updateMessage, deleteMessage, listenForMessages, getGameConfig };
