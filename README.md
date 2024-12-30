@@ -1,6 +1,6 @@
 # genesis-backend
 
-[Current Calender week](https://www.calendar-week.org/)
+[Current Calender week (for branch-names)](https://www.calendar-week.org/)
 
 This is the backend for the game Genesis. This handles account requests and Launcher functionality.
 
