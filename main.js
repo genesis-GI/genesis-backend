@@ -14,8 +14,8 @@ app.use(cookieParser());  // Enable cookie parsing
 app.use(express.json());  // Add this line to parse JSON request bodies
 
 async function isLoggedIn(req) {
-    const { email, username, password } = req.cookies;
-    if (!email || !username || !password) {
+    const { email, password } = req.cookies;
+    if (!email || !password) {
         return false;
     }
     
@@ -230,10 +230,15 @@ app.post('/login/:email/:password', async (req, res) => {
 });
 
 app.get('/spectrum/motd/:channel', async(req, res) => {
-    const channel = req.params.channel;
-
-    res.send(await spectrum.getMOTD(channel))
-})
+    try {
+        const channel = req.params.channel;
+        const motd = await spectrum.getMOTD(channel);
+        res.json(motd);
+    } catch (error) {
+        console.error('Error fetching MOTD:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 app.post('/spectrum/motd/:channel', async(req, res) => {
     if (!await isLoggedIn(req)) {
@@ -311,62 +316,93 @@ app.get('/spectrum/users', async (req, res) => {
         res.json(users);
     } catch (error) {
         console.error('Error fetching users:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
 app.get('/spectrum/currentUser', async (req, res) => {
-    if (!await isLoggedIn(req)) {
-        return res.status(403).send('Access forbidden: You must be logged in');
+    try {
+        if (!await isLoggedIn(req)) {
+            return res.status(403).json({ error: 'Access forbidden: You must be logged in' });
+        }
+        const { email } = req.cookies;
+        const user = await db.getUserByEmail(email);
+        res.json({ email, username: user.username, admin: user.admin });
+    } catch (error) {
+        console.error('Error fetching current user:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
-    const { email, username } = req.cookies;
-    const user = await db.getUserByEmail(email);
-    res.json({ email, username, admin: user.admin });
 });
 
 app.get('/spectrum/channels', async (req, res) => {
-    const channels = await spectrum.getChannels();
-    res.json(channels);
+    try {
+        const channels = await spectrum.getChannels();
+        res.json(channels);
+    } catch (error) {
+        console.error('Error loading channels:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
 
 app.get('/spectrum/motd/updates/:channel', async (req, res) => {
     if (!await isLoggedIn(req)) {
-        return res.status(403).send('Access forbidden: You must be logged in');
+        return res.status(403).json({ error: 'Access forbidden: You must be logged in' });
     }
     const channel = req.params.channel;
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    spectrum.listenForMOTDUpdates(channel, (motdInfos) => {
+    const sendUpdate = (motdInfos) => {
         res.write(`data: ${JSON.stringify(motdInfos)}\n\n`);
+    };
+
+    spectrum.listenForMOTDUpdates(channel, sendUpdate);
+
+    req.on('close', () => {
+        spectrum.removeMOTDListener(channel, sendUpdate);
+        res.end();
     });
 });
 
 app.get('/spectrum/channels/updates', async (req, res) => {
     if (!await isLoggedIn(req)) {
-        return res.status(403).send('Access forbidden: You must be logged in');
+        return res.status(403).json({ error: 'Access forbidden: You must be logged in' });
     }
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    spectrum.listenForChannelUpdates((channels) => {
+    const sendUpdate = (channels) => {
         res.write(`data: ${JSON.stringify(channels)}\n\n`);
+    };
+
+    spectrum.listenForChannelUpdates(sendUpdate);
+
+    req.on('close', () => {
+        spectrum.removeChannelListener(sendUpdate);
+        res.end();
     });
 });
 
 app.get('/spectrum/starredChannels/updates/:email', async (req, res) => {
     if (!await isLoggedIn(req)) {
-        return res.status(403).send('Access forbidden: You must be logged in');
+        return res.status(403).json({ error: 'Access forbidden: You must be logged in' });
     }
     const email = req.params.email;
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    spectrum.listenForStarredChannelUpdates(email, (starredChannels) => {
+    const sendUpdate = (starredChannels) => {
         res.write(`data: ${JSON.stringify(starredChannels)}\n\n`);
+    };
+
+    spectrum.listenForStarredChannelUpdates(email, sendUpdate);
+
+    req.on('close', () => {
+        spectrum.removeStarredChannelListener(email, sendUpdate);
+        res.end();
     });
 });
 
@@ -404,13 +440,23 @@ app.delete('/spectrum/:channel/messages/:id', async (req, res) => {
 });
 
 app.get('/spectrum/:channel/messages/updates', async (req, res) => {
-    if (!await isLoggedIn(req)) { return res.status(403).send('Access forbidden'); }
+    if (!await isLoggedIn(req)) {
+        return res.status(403).json({ error: 'Access forbidden: You must be logged in' });
+    }
     const channel = req.params.channel;
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    db.listenForMessages(channel, (messages) => {
+
+    const sendUpdate = (messages) => {
         res.write(`data: ${JSON.stringify(messages)}\n\n`);
+    };
+
+    db.listenForMessages(channel, sendUpdate);
+
+    req.on('close', () => {
+        db.removeMessageListener(channel, sendUpdate);
+        res.end();
     });
 });
 

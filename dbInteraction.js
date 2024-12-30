@@ -17,7 +17,13 @@ function getMOTDRef(channel) {
 }
 
 function getUserRefByEmail(email) {
-    return db.collection('accounts').where('email', '==', email);
+    return db.collection('accounts').where('email', '==', email).limit(1).get().then(snapshot => {
+        if (!snapshot.empty) {
+            return snapshot.docs[0].ref;
+        } else {
+            throw new Error('User not found');
+        }
+    });
 }
 
 async function init() {
