@@ -72,22 +72,34 @@ app.get('/performance', (req, res) => {
 app.get('/api/getVersions/:game/:email', async (req, res) => {
     const accountMail = req.params.email;
     const game = req.params.game;
-    try {
-        const jsonFilePath = path.join(__dirname, 'data', game, 'game-config.json');
-        const rawData = fs.readFileSync(jsonFilePath, 'utf-8');
-        const gameConfig = JSON.parse(rawData);
+    if(game.toLowerCase() !== 'genesis'){
+        return res.status(400).json({ error: "Invalid game (at the moment)" });
+    }else{
 
+    
+    try {
+
+        const gameConfig = await db.getGameConfig();
+
+        // Überprüfen, ob `gameConfig` als String vorliegt und parsbar ist
+        if (!gameConfig || typeof gameConfig !== 'object' || !gameConfig.builds) {
+            throw new Error("Invalid raw data structure: 'gameConfig' missing or invalid");
+        }
+
+        // Sicherstellen, dass 'builds' ein Array ist
         if (!Array.isArray(gameConfig.builds)) {
             throw new Error("Invalid JSON structure: 'builds' is not an array");
         }
 
+        // Nutzerinformationen abrufen
         const user = await db.getUserByEmail(accountMail);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
 
+        // Zugelassene Builds filtern
         const userWave = user.wave;
-        const availableBuilds = gameConfig.builds.filter(build => build.requiredWaveAccess >= userWave);
+        const availableBuilds = gameConfig.builds.filter(build => userWave <= build.requiredWaveAccess);
 
         return res.json({
             email: accountMail,
@@ -95,9 +107,9 @@ app.get('/api/getVersions/:game/:email', async (req, res) => {
             allowedBuilds: availableBuilds,
         });
     } catch (error) {
-        console.error("[main.js]: Error reading game-config.json or processing request:", error.message);
+        console.error("[main.js]: Error processing request:", error.message);
         res.status(500).json({ error: "Internal Server Error" });
-    }
+    }}
 });
 
 app.get('/api/getChecksums/:game/:version', async (req, res) => {

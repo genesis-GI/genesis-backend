@@ -284,4 +284,41 @@ async function getStarredChannels(email) {
     }
 }
 
-module.exports = { register, login, init, reachable, getUserByEmail, setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, getMOTDRef, getUserRefByEmail, getFirestore };
+async function fetchRemoteConfig() {
+    try {
+        const remoteConfig = admin.remoteConfig();
+        // Abrufen der aktuellen Vorlage
+        const template = await remoteConfig.getTemplate();
+        
+        // Alle Parameter in einer JSON-Variable speichern
+        const parameters = template.parameters;
+
+
+        const configJson = {};
+        for (const key in parameters) {
+            configJson[key] = parameters[key].defaultValue 
+                ? parameters[key].defaultValue.value 
+                : null;
+        }
+
+        return configJson;
+    } catch (error) {
+        console.error("Fehler beim Abrufen der Remote Config:", error);
+        throw error;
+    }
+}
+
+async function getGameConfig() {
+    try {
+        const rawData = await fetchRemoteConfig();
+        if (!rawData || typeof rawData !== 'object' || !rawData.gameConfig) {
+            throw new Error("Invalid remote config data: 'gameConfig' missing");
+        }
+        return JSON.parse(rawData.gameConfig);
+    } catch (error) {
+        console.error("[dbInteraction.js]: Error retrieving game config:", error);
+        throw error;
+    }
+}
+
+module.exports = { fetchRemoteConfig, register, login, init, reachable, getUserByEmail, setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, getMOTDRef, getUserRefByEmail, getFirestore, getGameConfig };
