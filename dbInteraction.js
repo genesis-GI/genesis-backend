@@ -284,43 +284,6 @@ async function getStarredChannels(email) {
     }
 }
 
-async function getMessages(channel) {
-    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list');
-    const snapshot = await msgsRef.orderBy('createdAt', 'asc').get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-}
-
-async function createMessage(channel, username, text) {
-    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list');
-    const newMsg = {
-        username,
-        text,
-        createdAt: new Date()
-    };
-    const docRef = await msgsRef.add(newMsg);
-    return { id: docRef.id, ...newMsg };
-}
-
-async function updateMessage(channel, id, text) {
-    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list');
-    await msgsRef.doc(id).update({ text });
-}
-
-async function deleteMessage(channel, id) {
-    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list');
-    await msgsRef.doc(id).delete();
-}
-
-function listenForMessages(channel, callback) {
-    const msgsRef = db.collection(`spectrum-${channel.toLowerCase()}`).doc('messages').collection('list').orderBy('createdAt', 'asc');
-    msgsRef.onSnapshot(snapshot => {
-        const messages = [];
-        snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
-        callback(messages);
-    });
-}
-
-
 async function fetchRemoteConfig() {
     try {
         const remoteConfig = admin.remoteConfig();
@@ -358,4 +321,4 @@ async function getGameConfig() {
     }
 }
 
-module.exports = { fetchRemoteConfig, register, login, init, reachable, getUserByEmail, setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, getMOTDRef, getUserRefByEmail, getFirestore, getMessages, createMessage, updateMessage, deleteMessage, listenForMessages, getGameConfig };
+module.exports = { fetchRemoteConfig, register, login, init, reachable, getUserByEmail, setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, getMOTDRef, getUserRefByEmail, getFirestore, getGameConfig };
