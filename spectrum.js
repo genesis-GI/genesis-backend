@@ -130,29 +130,4 @@ async function getStarredChannels(email) {
     return await db.getStarredChannels(email);
 }
 
-function removeMOTDListener(channel, callback) {
-    const motdRef = db.getMOTDRef(channel);
-    motdRef.onSnapshot(() => {}).off(callback);
-}
-
-function removeChannelListener(callback) {
-    db.getFirestore().listCollections().then(collections => {
-        const channels = collections
-            .filter(collection => collection.id.startsWith('spectrum-'))
-            .map(collection => collection.id.replace('spectrum-', ''));
-        callback(channels);
-    }).catch(error => {
-        console.error('Error fetching channels:', error);
-    }).off(callback);
-}
-
-function removeStarredChannelListener(email, callback) {
-    const userRef = db.getUserRefByEmail(email);
-    userRef.onSnapshot(() => {}).off(callback);
-}
-
-module.exports = { 
-    setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, 
-    starChannel, getStarredChannels, listenForMOTDUpdates, listenForChannelUpdates, 
-    listenForStarredChannelUpdates, removeMOTDListener, removeChannelListener, removeStarredChannelListener 
-};
+module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, listenForMOTDUpdates, listenForChannelUpdates, listenForStarredChannelUpdates };
