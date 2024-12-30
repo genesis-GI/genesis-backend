@@ -53,15 +53,6 @@ app.get('/spectrum', async (req, res) => {
     res.sendFile(path.join(__dirname, "public/spectrum.html"));
 });
 
-app.get('/spectrum/:channel', async (req, res) => {
-    if (!await isLoggedIn(req)) {
-        return res.status(403).send('Access forbidden: You must be logged in');
-    }
-    res.sendFile(path.join(__dirname, 'public/spectrum.html'));
-});
-
-
-
 app.post('/register/:username/:email/:password', async (req, res) => {
     const username = req.params.username;
     const email = req.params.email;
@@ -120,8 +111,6 @@ app.get('/api/getVersions/:game/:email', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }}
 });
-
-
 
 app.get('/api/getChecksums/:game/:version', async (req, res) => {
     const game = req.params.game;
@@ -218,10 +207,10 @@ app.post('/login/:email/:password', async (req, res) => {
             res.status(401).send('Invalid credentials');
         } else {
             const user = await db.getUserByEmail(email);
-            res.cookie('email', email, { httpOnly: true, secure: false, sameSite: 'None' });
-            res.cookie('username', user.username, { httpOnly: true, secure: false, sameSite: 'None' });
-            res.cookie('password', password, { httpOnly: true, secure: false, sameSite: 'None' });
-            res.cookie('admin', user.admin, { httpOnly: true, secure: false, sameSite: 'None' });
+            res.cookie('email', email, { httpOnly: true, secure: true }); // secure should be true in production
+            res.cookie('username', user.username, { httpOnly: true, secure: true });
+            res.cookie('password', password, { httpOnly: true, secure: true }); // Not recommended to store plaintext passwords in cookies
+            res.cookie('admin', user.admin, { httpOnly: true, secure: true });
             res.status(200).send('Login successful');
         }
     } catch (error) {
@@ -362,50 +351,6 @@ app.get('/spectrum/starredChannels/updates/:email', async (req, res) => {
 
     spectrum.listenForStarredChannelUpdates(email, (starredChannels) => {
         res.write(`data: ${JSON.stringify(starredChannels)}\n\n`);
-    });
-});
-
-app.get('/spectrum/:channel/messages', async (req, res) => {
-    if (!await isLoggedIn(req)) { return res.status(403).send('Access forbidden'); }
-    const channel = req.params.channel;
-    const messages = await db.getMessages(channel);
-    res.json(messages);
-});
-
-app.post('/spectrum/:channel/messages', async (req, res) => {
-    if (!await isLoggedIn(req)) { return res.status(403).send('Access forbidden'); }
-    const channel = req.params.channel;
-    const { email, username } = req.cookies;
-    const { text } = req.body;
-    const newMsg = await db.createMessage(channel, username, text);
-    res.json(newMsg);
-});
-
-app.put('/spectrum/:channel/messages/:id', async (req, res) => {
-    if (!await isLoggedIn(req)) { return res.status(403).send('Access forbidden'); }
-    const channel = req.params.channel;
-    const { id } = req.params;
-    const { text } = req.body;
-    await db.updateMessage(channel, id, text);
-    res.sendStatus(200);
-});
-
-app.delete('/spectrum/:channel/messages/:id', async (req, res) => {
-    if (!await isLoggedIn(req)) { return res.status(403).send('Access forbidden'); }
-    const channel = req.params.channel;
-    const { id } = req.params;
-    await db.deleteMessage(channel, id);
-    res.sendStatus(200);
-});
-
-app.get('/spectrum/:channel/messages/updates', async (req, res) => {
-    if (!await isLoggedIn(req)) { return res.status(403).send('Access forbidden'); }
-    const channel = req.params.channel;
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    db.listenForMessages(channel, (messages) => {
-        res.write(`data: ${JSON.stringify(messages)}\n\n`);
     });
 });
 
