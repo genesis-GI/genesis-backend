@@ -21,6 +21,6 @@ jobs:
       - name: Merge Dev into Production
         run: |
           git fetch origin
-          git checkout production
+          git checkout Production
           git merge origin/dev --no-edit
-          git push origin production
+          git push origin Production
