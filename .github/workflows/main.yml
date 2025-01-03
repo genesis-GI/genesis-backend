@@ -28,7 +28,7 @@ jobs:
 
       - name: Merge Dev into Production
         run: |
-          git merge origin/Dev --no-edit
+          git merge origin/Dev --allow-unrelated-histories --no-edit
 
       - name: Push changes to Production
         run: git push origin Production
