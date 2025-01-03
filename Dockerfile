@@ -7,7 +7,7 @@ RUN apt-get update && \
     apt-get clean && \
     npm install pm2 -g
 
-WORKDIR /app
+WORKDIR /cloudmesh
 
 COPY . . 
 

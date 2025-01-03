@@ -5,8 +5,7 @@
   "scripts": {
     "build": "docker buildx build --platform linux/amd64,linux/arm64 -t cloudmesh-backend:latest .",
     "push": "docker push sl3mey0/genesis-backend:latest",
-    "build-push": "npm run build && npm run push",
-    "start-container": "docker-compose up -d",
+    "deploy": "./deploy.sh",
     "dev": "nodemon main.js",
     "start": "node main.js"
   },
