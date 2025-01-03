@@ -2,8 +2,8 @@ name: Merge Dev into Production
 
 on:
   schedule:
-    - cron: '0 4 * * 1' # 4:00 UTC is 6:00 CEST
-  workflow_dispatch: # Allow manual trigger
+    - cron: '0 4 * * 1' # Runs every Monday at 4:00 UTC (6:00 CEST)
+  workflow_dispatch: # Allows manual trigger
 
 jobs:
   merge_dev_to_production:
@@ -13,14 +13,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Git
+      - name: Set up Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Fetch all branches
+        run: git fetch --all
+
+      - name: Checkout Production branch
+        run: |
+          git checkout Production
+          git pull origin Production
+
       - name: Merge Dev into Production
         run: |
-          git fetch origin
-          git checkout Production
-          git merge origin/dev --no-edit
-          git push origin Production
+          git merge origin/Dev --no-edit
+
+      - name: Push changes to Production
+        run: git push origin Production
