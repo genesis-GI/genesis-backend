@@ -1,0 +1,26 @@
+name: Merge Dev into Production
+
+on:
+  schedule:
+    - cron: '0 4 * * 1' # 4:00 UTC is 6:00 CEST
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  merge_dev_to_production:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge Dev into Production
+        run: |
+          git fetch origin
+          git checkout production
+          git merge origin/dev --no-edit
+          git push origin production
