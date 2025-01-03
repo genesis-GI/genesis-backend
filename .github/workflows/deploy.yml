@@ -1,0 +1,48 @@
+name: Build and Deploy Docker Image
+
+on:
+  push:
+    branches:
+      - Production
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the code from the repository
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      # Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/cloudmesh-backend:latest .
+
+      # Push the Docker image to Docker Hub
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/cloudmesh-backend:latest
+
+      # Connect to your remote server via SSH to update the container
+      - name: Deploy updated container on remote server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.REMOTE_PORT }}
+          script: |
+            # Pull latest image
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cloudmesh-backend:latest
+            # Stop and remove old container (if it's running)
+            docker stop cloudmesh-backend || true
+            docker rm cloudmesh-backend || true
+            # Run new container
+            docker run -d --name cloudmesh-backend \
+              -p 8088:8088 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/cloudmesh-backend:latest
