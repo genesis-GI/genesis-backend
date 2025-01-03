@@ -631,11 +631,11 @@
                     body: JSON.stringify({ message: newMotd })
                 });
                 if (response.ok) {
-                    showNotification('MOTD updated successfully', 'success');
+                    showNotification('Lobby MOTD has been successfully updated', 'success');
                     switchChannel(channel);
                     closeMotdEditor();
                 } else {
-                    showNotification('Failed to update MOTD', 'error');
+                    showNotification('Failed to update Lobby MOTD', 'error');
                 }
             } catch (error) {
                 console.error('Error updating MOTD:', error);
