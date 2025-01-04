@@ -7,15 +7,20 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <h1 id="welcome-message">Welcome!</h1>
+    <h1 id="welcome-message">Welcome to Cloudmesh!</h1>
 
     <div id="notification" class="hidden"></div>
-    <button type="button" id="home" onclick="window.location.href='/download'">Download Launcher</button>
     <button type="button" id="home" onclick="window.location.href='/spectrum'">Spectrum</button>
+    <button type="button" id="home" onclick="window.location.href='/download'">Download Launcher</button>
+    <button type="button", id="discord" onclick="joinDiscord()">Join our Discord Server</button>
     <button type="button" id="logout" onclick="logout()">Logout</button>
 </body>
 
 <script>
+
+    function joinDiscord() {
+        window.location.href = 'https://discord.gg/r3bJagxvM5';
+    }
 
     function getCookie(name) {
         const value = `; ${document.cookie}`;
