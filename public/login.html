@@ -42,8 +42,17 @@
         } else {
             try {
                 const hashedPassword = await hashPassword(password.value);
-                const url = `/login/${email.value}/${hashedPassword}`;
-                const response = await fetch(url, { method: "POST" });
+                const url = `/login`;
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        email: email.value,
+                        password: hashedPassword
+                    })
+                });
                 if (response.status !== 200) {
                     showNotification("Something went wrong, please try again", "error");
                 } else {

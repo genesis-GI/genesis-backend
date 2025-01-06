@@ -1,11 +1,28 @@
 package main
 
 import (
-
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
+
+type RegisterRequest struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
 func main() {
 	gin.SetMode(gin.ReleaseMode)
@@ -17,28 +34,133 @@ func main() {
 	})
 
 	r.GET("/", func(c *gin.Context) {
-		c.File("public/landing.html")
-	})
+		email, err := c.Cookie("email")
+		if err != nil {
+			c.File("public/landing.html")
+			return
+		}
+		password, err := c.Cookie("password")
+		if err != nil {
+			c.File("public/landing.html")
+			return
+		}
 
+		_, err = Login(email, password)
+		if err == nil {
+			c.File("public/loggedIn.html")
+		} else {
+			c.File("public/landing.html")
+		}
+	})
 
 	r.GET("/login", func(c *gin.Context) {
 		c.File("public/login.html")
 	})
 
-	r.GET("/register", func(c *gin.Context){
+	r.GET("/register", func(c *gin.Context) {
 		c.File("public/register.html")
 	})
 
 	r.GET("/download", func(c *gin.Context) {
-		c.File("public/launcherdownload.html")
+		email, err := c.Cookie("email")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		password, err := c.Cookie("password")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+
+		_, err = Login(email, password)
+		if err == nil {
+			c.File("public/launcherdownload.html")
+		} else {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+		}
 	})
 
 	r.GET("/spectrum", func(c *gin.Context) {
-		c.File("public/spectrum.html")
+		email, err := c.Cookie("email")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		password, err := c.Cookie("password")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+
+		_, err = Login(email, password)
+		if err == nil {
+			c.File("public/spectrum.html")
+		} else {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+		}
 	})
 
 	r.GET("/performance", func(c *gin.Context) {
 		c.File("public/Genesis-website-performance-report-2.html")
+	})
+
+	r.POST("/register", func(c *gin.Context) {
+		var req RegisterRequest
+		if err := c.ShouldBindWith(&req, binding.JSON); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		// Call register function from dbInteraction.go
+		success := Register(req.Username, req.Email, req.Password)
+		if success {
+			c.JSON(http.StatusOK, gin.H{"message": "User registered"})
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Error during register sequence"})
+		}
+	})
+
+	r.POST("/login", func(c *gin.Context) {
+		var req LoginRequest
+		if err := c.ShouldBindWith(&req, binding.JSON); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		user, err := Login(req.Email, req.Password)
+		if err == nil {
+			c.SetCookie("email", req.Email, 3600, "/", "localhost", false, true)
+			c.SetCookie("username", user["username"].(string), 3600, "/", "localhost", false, true)
+			c.SetCookie("admin", fmt.Sprintf("%v", user["admin"]), 3600, "/", "localhost", false, true)
+			c.SetCookie("password", req.Password, 3600, "/", "localhost", false, true) // Store password for auto-login
+			c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid credentials"})
+		}
+	})
+
+	r.GET("/auto-login", func(c *gin.Context) {
+		email, err := c.Cookie("email")
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Not logged in"})
+			return
+		}
+		password, err := c.Cookie("password")
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Not logged in"})
+			return
+		}
+
+		user, err := Login(email, password)
+		if err == nil {
+			c.JSON(http.StatusOK, gin.H{
+				"email":    email,
+				"username": user["username"],
+				"admin":    user["admin"],
+			})
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid credentials"})
+		}
 	})
 
 	api := r.Group("/api")
@@ -48,8 +170,82 @@ func main() {
 				"message": "pong",
 			})
 		})
+
+		api.GET("/getVersions/:game/:email", func(c *gin.Context) {
+			game := c.Param("game")
+			email := c.Param("email")
+			if game != "genesis" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid game (at the moment)"})
+				return
+			}
+			// Call getVersions function from dbInteraction.go
+			versions, err := GetVersions(game, email)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+				return
+			}
+			c.JSON(http.StatusOK, versions)
+		})
+
+		api.GET("/getChecksums/:game/:version", func(c *gin.Context) {
+			game := c.Param("game")
+			version := c.Param("version")
+			buildPath := filepath.Join("data", game, "builds", version)
+			if _, err := os.Stat(buildPath); os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Build path not found"})
+				return
+			}
+			checksums, err := calculateChecksums(buildPath)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"game": game, "version": version, "checksums": checksums})
+		})
+
+		api.GET("/download/:game/:version", func(c *gin.Context) {
+			game := c.Param("game")
+			version := c.Param("version")
+			buildPath := filepath.Join("data", game, "builds", version)
+			if _, err := os.Stat(buildPath); os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Requested game version not found"})
+				return
+			}
+			c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s-%s.zip", game, version))
+			c.Writer.Header().Set("Content-Type", "application/zip")
+			// Stream folder contents for download
+			// Implement ZIP streaming logic here
+		})
 	}
 
 	fmt.Println("Server is running on http://localhost:8089")
 	r.Run(":8089")
+}
+
+func calculateChecksums(dir string) (map[string]string, error) {
+	checksums := make(map[string]string)
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		fullPath := filepath.Join(dir, file.Name())
+		if file.IsDir() {
+			subChecksums, err := calculateChecksums(fullPath)
+			if err != nil {
+				return nil, err
+			}
+			for k, v := range subChecksums {
+				checksums[filepath.Join(file.Name(), k)] = v
+			}
+		} else {
+			data, err := ioutil.ReadFile(fullPath)
+			if err != nil {
+				return nil, err
+			}
+			hash := md5.Sum(data)
+			checksums[file.Name()] = hex.EncodeToString(hash[:])
+		}
+	}
+	return checksums, nil
 }

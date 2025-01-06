@@ -306,11 +306,33 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            checkCurrentUser();
-            loadChannels();
-            switchChannel('genesis-testing-chat');
-            fetchUsers();
+            autoLogin();
         });
+
+        async function autoLogin() {
+            try {
+                const response = await fetch('/auto-login');
+                if (response.ok) {
+                    const user = await response.json();
+                    const currentUserDiv = document.getElementById('current-user');
+                    currentUserDiv.innerHTML = `<p>Email: ${user.email}</p><p>Username: ${user.username}</p><p>Admin: ${user.admin}</p>`;
+                    if (user.admin) {
+                        document.getElementById('editMotdButton').style.display = 'block';
+                        document.getElementById('createChannelButton').style.display = 'block';
+                    } else {
+                        document.getElementById('createChannelButton').style.display = 'none';
+                    }
+                    loadChannels();
+                    switchChannel('genesis-testing-chat');
+                    fetchUsers();
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Error during auto-login:', error);
+                window.location.href = '/login';
+            }
+        }
 
         function formatTime(seconds) {
             if (seconds < 60) {
