@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -99,6 +100,67 @@ func main() {
 		} else {
 			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
 		}
+	})
+
+	r.GET("/spectrum/channels", func(c *gin.Context) {
+		channels, err := GetChannels()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			return
+		}
+		c.JSON(http.StatusOK, channels)
+	})
+
+	r.GET("/spectrum/motd/:channel", func(c *gin.Context) {
+		channel := c.Param("channel")
+		motd, err := GetMOTD(channel)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			return
+		}
+		if motd == nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "MOTD not found"})
+			return
+		}
+		c.JSON(http.StatusOK, motd)
+	})
+
+	r.GET("/spectrum/users", func(c *gin.Context) {
+		users, err := GetUsers()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			return
+		}
+		c.JSON(http.StatusOK, users)
+	})
+
+	r.GET("/spectrum/motd/updates/:channel", func(c *gin.Context) {
+		channel := c.Param("channel")
+		c.Stream(func(w io.Writer) bool {
+			motd, err := GetMOTD(channel)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+				return false
+			}
+			if motd == nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "MOTD not found"})
+				return false
+			}
+			c.SSEvent("message", motd)
+			return true
+		})
+	})
+
+	r.GET("/spectrum/channels/updates", func(c *gin.Context) {
+		c.Stream(func(w io.Writer) bool {
+			channels, err := GetChannels()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+				return false
+			}
+			c.SSEvent("message", channels)
+			return true
+		})
 	})
 
 	r.GET("/performance", func(c *gin.Context) {
@@ -204,7 +266,8 @@ func main() {
 		})
 
 		api.GET("/download/:game/:version", func(c *gin.Context) {
-			game := c.Param("game")
+			c.String(300, "This is an old endpoint. Please ask the support if this issue persists.")
+/* 			game := c.Param("game")
 			version := c.Param("version")
 			buildPath := filepath.Join("data", game, "builds", version)
 			if _, err := os.Stat(buildPath); os.IsNotExist(err) {
@@ -212,7 +275,7 @@ func main() {
 				return
 			}
 			c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s-%s.zip", game, version))
-			c.Writer.Header().Set("Content-Type", "application/zip")
+			c.Writer.Header().Set("Content-Type", "application/zip") */
 			// Stream folder contents for download
 			// Implement ZIP streaming logic here
 		})

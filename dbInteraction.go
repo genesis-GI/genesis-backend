@@ -137,3 +137,58 @@ func FetchRemoteConfig() (map[string]interface{}, error) {
 	// Implement fetching remote config from Firebase
 	return nil, nil
 }
+
+func GetChannels() ([]string, error) {
+	ctx := context.Background()
+	collections, err := client.Collections(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var channels []string
+	for _, collection := range collections {
+		if strings.HasPrefix(collection.ID, "spectrum-") {
+			channels = append(channels, strings.TrimPrefix(collection.ID, "spectrum-"))
+		}
+	}
+	return channels, nil
+}
+
+func GetMOTD(channel string) (map[string]interface{}, error) {
+	ctx := context.Background()
+	doc, err := client.Collection("spectrum-" + channel).Doc("motd").Get(ctx)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return doc.Data(), nil
+}
+
+func GetUsers() (map[string][]string, error) {
+	ctx := context.Background()
+	staffSnapshot, err := client.Collection("staff").Documents(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+	backersSnapshot, err := client.Collection("backers").Documents(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var staff []string
+	for _, doc := range staffSnapshot {
+		staff = append(staff, doc.Data()["username"].(string))
+	}
+
+	var backers []string
+	for _, doc := range backersSnapshot {
+		backers = append(backers, doc.Data()["username"].(string))
+	}
+
+	return map[string][]string{
+		"staff":   staff,
+		"backers": backers,
+	}, nil
+}

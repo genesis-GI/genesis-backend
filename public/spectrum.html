@@ -422,19 +422,6 @@
             lastChangedInterval = setInterval(update, 60000);
         }
 
-        function listenForMOTDUpdates(channel) {
-            if (currentEventSource) {
-                currentEventSource.close();
-            }
-            currentEventSource = new EventSource(`/spectrum/motd/updates/${channel}`);
-            currentEventSource.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                document.getElementById('message').innerHTML = parseMarkdown(data.message);
-                const date = new Date(data.date._seconds * 1000 + data.date._nanoseconds / 1000000);
-                updateLastChanged(date);
-            };
-        }
-
         async function checkCurrentUser() {
             try {
                 const response = await fetch('/spectrum/currentUser');
@@ -610,18 +597,22 @@
                     const backersList = document.getElementById('backers-list');
                     staffList.innerHTML = '';
                     backersList.innerHTML = '';
-                    users.staff.forEach(user => {
-                        const userElement = document.createElement('p');
-                        userElement.innerText = user;
-                        userElement.classList.add('staff');
-                        staffList.appendChild(userElement);
-                    });
-                    users.backers.forEach(user => {
-                        const userElement = document.createElement('p');
-                        userElement.innerText = user;
-                        userElement.classList.add('backer');
-                        backersList.appendChild(userElement);
-                    });
+                    if (users.staff) {
+                        users.staff.forEach(user => {
+                            const userElement = document.createElement('p');
+                            userElement.innerText = user;
+                            userElement.classList.add('staff');
+                            staffList.appendChild(userElement);
+                        });
+                    }
+                    if (users.backers) {
+                        users.backers.forEach(user => {
+                            const userElement = document.createElement('p');
+                            userElement.innerText = user;
+                            userElement.classList.add('backer');
+                            backersList.appendChild(userElement);
+                        });
+                    }
                 } else {
                     console.error('Failed to fetch users:', response.statusText);
                 }
@@ -718,6 +709,19 @@
             const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
             const newlinePattern = /\n/g;
             return text.replace(linkPattern, '<a href="$2" target="_blank">$1</a>').replace(newlinePattern, '<br>');
+        }
+
+        function listenForMOTDUpdates(channel) {
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+            currentEventSource = new EventSource(`/spectrum/motd/updates/${channel}`);
+            currentEventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                document.getElementById('message').innerHTML = parseMarkdown(data.message);
+                const date = new Date(data.date._seconds * 1000 + data.date._nanoseconds / 1000000);
+                updateLastChanged(date);
+            };
         }
     </script>
 </body>
