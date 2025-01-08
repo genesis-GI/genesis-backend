@@ -166,25 +166,38 @@ func GetMOTD(channel string) (map[string]interface{}, error) {
 	return doc.Data(), nil
 }
 
+func SetMOTD(channel, message string) error {
+	ctx := context.Background()
+	_, err := client.Collection("spectrum-" + strings.ToLower(channel)).
+		Doc("motd").
+		Set(ctx, map[string]interface{}{
+			"message": message,
+			"date":    firestore.ServerTimestamp,
+		})
+	return err
+}
+
 func GetUsers() (map[string][]string, error) {
 	ctx := context.Background()
-	staffSnapshot, err := client.Collection("staff").Documents(ctx).GetAll()
-	if err != nil {
-		return nil, err
-	}
-	backersSnapshot, err := client.Collection("backers").Documents(ctx).GetAll()
+	accounts, err := client.Collection("accounts").Documents(ctx).GetAll()
 	if err != nil {
 		return nil, err
 	}
 
 	var staff []string
-	for _, doc := range staffSnapshot {
-		staff = append(staff, doc.Data()["username"].(string))
-	}
-
 	var backers []string
-	for _, doc := range backersSnapshot {
-		backers = append(backers, doc.Data()["username"].(string))
+	for _, doc := range accounts {
+		data := doc.Data()
+		username, ok := data["username"].(string)
+		if !ok {
+			continue
+		}
+		isAdmin, _ := data["admin"].(bool)
+		if isAdmin {
+			staff = append(staff, username)
+		} else {
+			backers = append(backers, username)
+		}
 	}
 
 	return map[string][]string{

@@ -225,6 +225,41 @@ func main() {
 		}
 	})
 
+	r.POST("/spectrum/motd/:channel", func(c *gin.Context) {
+		email, err := c.Cookie("email")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		password, err := c.Cookie("password")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+
+		_, err = Login(email, password)
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+
+		channel := c.Param("channel")
+		var req struct {
+			Message string `json:"message"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		err = SetMOTD(channel, req.Message)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "MOTD updated successfully"})
+	})
+
 	api := r.Group("/api")
 	{
 		api.GET("/ping", func(c *gin.Context) {
