@@ -218,10 +218,10 @@ func main() {
 		fmt.Println("Trying login...")
 		user, err := Login(req.Email, req.Password)
 		if err == nil {
-			c.SetCookie("email", req.Email, 3600, "/", "localhost", false, true)
-			c.SetCookie("username", user["username"].(string), 3600, "/", "localhost", false, true)
-			c.SetCookie("admin", fmt.Sprintf("%v", user["admin"]), 3600, "/", "localhost", false, true)
-			c.SetCookie("password", req.Password, 3600, "/", "localhost", false, true) // Store password for auto-login
+			c.SetCookie("email", req.Email, 3600, "/", "", false, true)
+			c.SetCookie("username", user["username"].(string), 3600, "/", "", false, true)
+			c.SetCookie("admin", fmt.Sprintf("%v", user["admin"]), 3600, "/", "", false, true)
+			c.SetCookie("password", req.Password, 3600, "/", "", false, true) // Store password for auto-login
 			c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 			fmt.Println("User logged in successfully")
 		} else {
