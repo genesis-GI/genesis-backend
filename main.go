@@ -210,7 +210,7 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-
+		fmt.Println("Trying login...")
 		user, err := Login(req.Email, req.Password)
 		if err == nil {
 			c.SetCookie("email", req.Email, 3600, "/", "localhost", false, true)
@@ -541,6 +541,14 @@ func main() {
 			// Implement ZIP streaming logic here
 		})
 	}
+
+	r.GET("/logout", func(c *gin.Context){
+		c.SetCookie("email", "", -1, "/", "localhost", false, true)
+		c.SetCookie("username", "", -1, "/", "localhost", false, true)
+		c.SetCookie("admin", "", -1, "/", "localhost", false, true)
+		c.SetCookie("password", "", -1, "/", "localhost", false, true)
+		c.File("public/landing.html")
+	})
 
 	fmt.Println("Server is running on http://localhost:8088")
 	r.Run(":8088")
