@@ -80,7 +80,8 @@ func Login(email, password string) (map[string]interface{}, error) {
 	userRef := client.Collection("accounts")
 	userSnapshot, err := userRef.Where("email", "==", email).Documents(ctx).GetAll()
 	if err != nil || len(userSnapshot) == 0 {
-		return nil, errors.New("user not found")
+		fmt.Println("user not found: ", err)
+		return nil, errors.New("user not found: " + err.Error())
 	}
 
 	user := userSnapshot[0].Data()
@@ -112,7 +113,7 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	gameConfig, err := FetchRemoteConfig()
+	gameConfig, err := GetGameConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +127,11 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 	userWave := user["wave"].(int)
 	allowedBuilds := []interface{}{}
 	for _, build := range builds {
-		buildMap := build.(map[string]interface{})
+		buildMap, ok := build.(map[string]interface{})
+		if !ok {
+			fmt.Println("Invalid build map:", build)
+			continue
+		}
 		if userWave <= buildMap["requiredWaveAccess"].(int) {
 			allowedBuilds = append(allowedBuilds, build)
 		}
@@ -169,6 +174,7 @@ func FetchRemoteConfig() (map[string]interface{}, error) {
 		configJson[key] = defaultValue["value"]
 	}
 
+	fmt.Println("Fetched remote config:", configJson)
 	return configJson, nil
 }
 
