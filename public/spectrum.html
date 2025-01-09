@@ -382,6 +382,19 @@
         let currentEventSource;
         let lastChangedInterval;
 
+        function updateLastChanged(date) {
+            if (lastChangedInterval) {
+                clearInterval(lastChangedInterval);
+            }
+            function refresh() {
+                const now = new Date();
+                const secondsDiff = Math.floor((now - date) / 1000);
+                document.getElementById('lastChanged').innerText = formatTime(secondsDiff);
+            }
+            refresh();
+            lastChangedInterval = setInterval(refresh, 60000);
+        }
+
         async function switchChannel(channel) {
             console.log('Switching to channel:', channel);
             // If you want to force all channels to lower-case in Firestore:
