@@ -55,6 +55,11 @@ func main() {
 		}
 	})
 
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "favicon.ico coming soon"})
+		//c.File("public/favicon.ico")
+	})
+
 	r.GET("/login", func(c *gin.Context) {
 		c.File("public/login.html")
 	})
@@ -317,9 +322,12 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if err := CreateChannel(req.ChannelName); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to create channel"})
-			return
+		if err == nil {
+			err = CreateChannel(req.ChannelName)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to create channel"})
+				return
+			}
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "Channel created"})
 	})
@@ -341,9 +349,12 @@ func main() {
 		}
 
 		channel := c.Param("channel")
-		if err := DeleteChannel(channel); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to delete channel"})
-			return
+		if err == nil {
+			err = DeleteChannel(channel)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to delete channel"})
+				return
+			}
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "Channel deleted"})
 	})
@@ -372,9 +383,12 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if err := StarChannel(email, channel, req.IsStarred); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to star channel"})
-			return
+		if err == nil {
+			err = StarChannel(email, channel, req.IsStarred)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to star channel"})
+				return
+			}
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "Channel star updated"})
 	})
