@@ -384,20 +384,36 @@
 
         async function switchChannel(channel) {
             console.log('Switching to channel:', channel);
+            // If you want to force all channels to lower-case in Firestore:
+            channel = channel.toLowerCase();
+
             document.getElementById('messageInput').placeholder = `Message ${channel}`;
             document.getElementById('currentChannelName').innerText = channel;
-            document.querySelectorAll('#channels-list button').forEach(button => button.classList.remove('active'));
+            document.querySelectorAll('#channels-list button').forEach(btn => btn.classList.remove('active'));
             const channelButton = document.getElementById(channel);
             if (channelButton) {
                 channelButton.classList.add('active');
             }
+
             try {
-                const response = await fetch(`/spectrum/motd/${channel}`);
+                const response = await fetch(`/spectrum/${channel}/motd`);
                 if (response.ok) {
                     const data = await response.json();
                     document.getElementById('message').innerHTML = parseMarkdown(data.message);
-                    const date = new Date(data.date._seconds * 1000 + data.date._nanoseconds / 1000000);
-                    updateLastChanged(date);
+
+                    if (data.date && data.date._seconds !== undefined && data.date._nanoseconds !== undefined) {
+                        const date = new Date((data.date._seconds * 1000) + (data.date._nanoseconds / 1000000));
+                        updateLastChanged(date);
+                    } else if (data.date && typeof data.date === 'string') {
+                        const parsed = new Date(data.date);
+                        if (!isNaN(parsed.getTime())) {
+                            updateLastChanged(parsed);
+                        } else {
+                            document.getElementById('lastChanged').innerText = '';
+                        }
+                    } else {
+                        document.getElementById('lastChanged').innerText = '';
+                    }
                 } else {
                     console.error('Failed to fetch MOTD:', response.statusText);
                 }
@@ -405,21 +421,23 @@
                 console.error('Error fetching MOTD:', error);
             }
 
-            // Listen for real-time updates
-            listenForMOTDUpdates(channel);
-        }
-
-        function updateLastChanged(date) {
-            const lastChangedElement = document.getElementById('lastChanged');
-            const update = () => {
-                const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-                lastChangedElement.innerText = formatTime(seconds);
-            };
-            update();
-            if (lastChangedInterval) {
-                clearInterval(lastChangedInterval);
+            try {
+                const response = await fetch(`/spectrum/${channel}/messages`);
+                if (response.ok) {
+                    const messages = await response.json();
+                    const chatContainer = document.getElementById('chat-messages');
+                    chatContainer.innerHTML = '';
+                    messages.forEach(msg => {
+                        const p = document.createElement('p');
+                        p.textContent = msg["text"]; // adjust to your field name
+                        chatContainer.appendChild(p);
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching messages:', error);
             }
-            lastChangedInterval = setInterval(update, 60000);
+
+            listenForMOTDUpdates(channel);
         }
 
         async function checkCurrentUser() {
@@ -528,49 +546,49 @@
         async function starChannel(event, channel) {
             event.stopPropagation();
             const star = event.target;
-            const button = document.querySelector(`button[onclick="switchChannel('${channel}')"]`);
             const isStarred = star.classList.contains('filled');
-            if (isStarred) {
-                star.classList.remove('filled');
-                star.innerText = '☆';
-            } else {
-                star.classList.add('filled');
-                star.innerText = '★';
-            }
-            await saveStarredChannel(channel, !isStarred);
-            sortChannels();
-        }
+            star.classList.toggle('filled');
+            star.innerText = isStarred ? '☆' : '★';
 
-        async function saveStarredChannel(channel, isStarred) {
             try {
-                const response = await fetch(`/spectrum/starChannel/${channel}`, {
+                await fetch(`/spectrum/starChannel/${channel}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ isStarred })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isStarred: !isStarred })
                 });
-                if (!response.ok) {
-                    console.error('Failed to save starred channel:', response.statusText);
-                }
             } catch (error) {
-                console.error('Error saving starred channel:', error);
+                console.error('Error starring channel:', error);
             }
         }
 
         async function deleteChannel(event, channel) {
             event.stopPropagation();
             try {
-                const response = await fetch(`/spectrum/deleteChannel/${channel}`, { method: 'DELETE' });
+                const response = await fetch(`/spectrum/channel/${channel}`, {
+                    method: 'DELETE'
+                });
                 if (response.ok) {
-                    showNotification('Channel deleted successfully', 'success');
                     loadChannels();
-                } else {
-                    showNotification('Failed to delete channel', 'error');
                 }
             } catch (error) {
                 console.error('Error deleting channel:', error);
-                showNotification('Error deleting channel', 'error');
+            }
+        }
+
+        async function createChannel() {
+            const newChannelName = document.getElementById('newChannelName').value;
+            try {
+                const response = await fetch('/spectrum/channel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelName: newChannelName })
+                });
+                if (response.ok) {
+                    closeCreateChannelModal();
+                    loadChannels();
+                }
+            } catch (error) {
+                console.error('Error creating channel:', error);
             }
         }
 
@@ -664,37 +682,6 @@
             document.getElementById('createChannelModal').style.display = 'none';
         }
 
-        async function createChannel() {
-            const newChannelName = document.getElementById('newChannelName').value;
-            try {
-                const response = await fetch(`/spectrum/createChannel/${newChannelName}`, { method: 'POST' });
-                if (response.ok) {
-                    showNotification('Channel created successfully', 'success');
-                    closeCreateChannelModal();
-                    // Add the new channel button to the list
-                    const channelsList = document.getElementById('channels-list');
-                    const newButton = document.createElement('button');
-                    newButton.id = newChannelName;
-                    newButton.innerHTML = `${newChannelName} <span class="star" onclick="starChannel(event, '${newChannelName}')">☆</span>`;
-                    if (document.getElementById('current-user').innerHTML.includes('Admin: true')) {
-                        const trashIcon = document.createElement('span');
-                        trashIcon.classList.add('trash');
-                        trashIcon.innerHTML = '🗑️';
-                        trashIcon.onclick = (event) => deleteChannel(event, newChannelName);
-                        newButton.appendChild(trashIcon);
-                    }
-                    newButton.onclick = () => switchChannel(newChannelName);
-                    channelsList.appendChild(newButton);
-                    sortChannels();
-                } else {
-                    showNotification('Failed to create channel', 'error');
-                }
-            } catch (error) {
-                console.error('Error creating channel:', error);
-                showNotification('Error creating channel', 'error');
-            }
-        }
-
         function showNotification(message, type) {
             const notification = document.getElementById('notification');
             notification.innerText = message;
@@ -715,7 +702,7 @@
             if (currentEventSource) {
                 currentEventSource.close();
             }
-            currentEventSource = new EventSource(`/spectrum/motd/updates/${channel}`);
+            currentEventSource = new EventSource(`/spectrum/${channel}/motd/updates`);
             currentEventSource.onmessage = function(event) {
                 const data = JSON.parse(event.data);
                 document.getElementById('message').innerHTML = parseMarkdown(data.message);

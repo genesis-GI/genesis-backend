@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"encoding/json"
 
 	"cloud.google.com/go/firestore"
 	"golang.org/x/crypto/bcrypt"
@@ -116,7 +117,12 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	builds := gameConfig["builds"].([]interface{})
+	builds, ok := gameConfig["builds"].([]interface{})
+	if !ok {
+		fmt.Println("Invalid builds data:", gameConfig["builds"])
+		return nil, errors.New("invalid builds data")
+	}
+
 	userWave := user["wave"].(int)
 	allowedBuilds := []interface{}{}
 	for _, build := range builds {
@@ -134,8 +140,56 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 }
 
 func FetchRemoteConfig() (map[string]interface{}, error) {
-	// Implement fetching remote config from Firebase
-	return nil, nil
+	ctx := context.Background()
+	doc, err := client.Collection("config").Doc("gameConfig").Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	configData := doc.Data()
+	if configData == nil {
+		return nil, errors.New("config data is nil")
+	}
+
+	parameters, ok := configData["parameters"].(map[string]interface{})
+	if (!ok) {
+		return nil, errors.New("invalid parameters data")
+	}
+
+	configJson := make(map[string]interface{})
+	for key, value := range parameters {
+		paramMap, ok := value.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		defaultValue, ok := paramMap["defaultValue"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		configJson[key] = defaultValue["value"]
+	}
+
+	return configJson, nil
+}
+
+func GetGameConfig() (map[string]interface{}, error) {
+	rawData, err := FetchRemoteConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	gameConfigStr, ok := rawData["gameConfig"].(string)
+	if !ok {
+		return nil, errors.New("invalid remote config data: 'gameConfig' missing")
+	}
+
+	var gameConfig map[string]interface{}
+	err = json.Unmarshal([]byte(gameConfigStr), &gameConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return gameConfig, nil
 }
 
 func GetChannels() ([]string, error) {
@@ -168,7 +222,7 @@ func GetMOTD(channel string) (map[string]interface{}, error) {
 
 func SetMOTD(channel, message string) error {
 	ctx := context.Background()
-	_, err := client.Collection("spectrum-" + strings.ToLower(channel)).
+	_, err := client.Collection("spectrum-" + channel).
 		Doc("motd").
 		Set(ctx, map[string]interface{}{
 			"message": message,
@@ -204,4 +258,78 @@ func GetUsers() (map[string][]string, error) {
 		"staff":   staff,
 		"backers": backers,
 	}, nil
+}
+
+func GetChannelMessages(channel string) ([]map[string]interface{}, error) {
+	ctx := context.Background()
+	messagesRef := client.Collection("spectrum-" + channel).Doc("chat").Collection("messages")
+	docs, err := messagesRef.OrderBy("timestamp", firestore.Asc).Documents(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var messages []map[string]interface{}
+	for _, doc := range docs {
+		messages = append(messages, doc.Data())
+	}
+	return messages, nil
+}
+
+func CreateChannel(channel string) error {
+	ctx := context.Background()
+	_, err := client.Collection("spectrum-" + channel).Doc("chat").Set(ctx, map[string]interface{}{
+		"created_at": time.Now(),
+	})
+	return err
+}
+
+func DeleteChannel(channel string) error {
+	ctx := context.Background()
+	batch := client.Batch()
+	collectionRef := client.Collection("spectrum-" + channel)
+	docs, err := collectionRef.Documents(ctx).GetAll()
+	if err != nil {
+		return err
+	}
+	for _, doc := range docs {
+		batch.Delete(doc.Ref)
+	}
+	_, err = batch.Commit(ctx)
+	return err
+}
+
+func StarChannel(email, channel string, isStarred bool) error {
+	ctx := context.Background()
+	userRef := client.Collection("accounts").Where("email", "==", email)
+	userSnapshot, err := userRef.Documents(ctx).GetAll()
+	if err != nil || len(userSnapshot) == 0 {
+		return errors.New("user not found")
+	}
+	userDoc := userSnapshot[0].Ref
+	userData := userSnapshot[0].Data()
+	starredChannels := userData["starredChannels"].([]interface{})
+	if isStarred {
+		starredChannels = append(starredChannels, channel)
+	} else {
+		for i, ch := range starredChannels {
+			if ch == channel {
+				starredChannels = append(starredChannels[:i], starredChannels[i+1:]...)
+				break
+			}
+		}
+	}
+	_, err = userDoc.Update(ctx, []firestore.Update{
+		{Path: "starredChannels", Value: starredChannels},
+	})
+	return err
+}
+
+func GetChannel(channel string) (bool, error) {
+	ctx := context.Background()
+	collectionRef := client.Collection("spectrum-" + channel)
+	docs, err := collectionRef.Documents(ctx).GetAll()
+	if err != nil {
+		return false, err
+	}
+	return len(docs) > 0, nil
 }
