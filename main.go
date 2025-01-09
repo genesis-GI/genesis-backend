@@ -212,7 +212,6 @@ func main() {
 		}
 		fmt.Println("Trying login...")
 		user, err := Login(req.Email, req.Password)
-		fmt.Println("Login result:", user, err)
 		if err == nil {
 			c.SetCookie("email", req.Email, 3600, "/", "localhost", false, true)
 			c.SetCookie("username", user["username"].(string), 3600, "/", "localhost", false, true)
