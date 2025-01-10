@@ -130,4 +130,8 @@ async function getStarredChannels(email) {
     return await db.getStarredChannels(email);
 }
 
-module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, listenForMOTDUpdates, listenForChannelUpdates, listenForStarredChannelUpdates };
+function switchChannel(channelName) {
+    window.location.href = `/spectrum/${channelName}`;
+}
+
+module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, listenForMOTDUpdates, listenForChannelUpdates, listenForStarredChannelUpdates, switchChannel };

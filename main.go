@@ -71,12 +71,12 @@ func main() {
 	r.GET("/download", func(c *gin.Context) {
 		email, err := c.Cookie("email")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		password, err := c.Cookie("password")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
@@ -84,19 +84,19 @@ func main() {
 		if err == nil {
 			c.File("public/launcherdownload.html")
 		} else {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 		}
 	})
 
 	r.GET("/spectrum", func(c *gin.Context) {
 		email, err := c.Cookie("email")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		password, err := c.Cookie("password")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
@@ -104,7 +104,7 @@ func main() {
 		if err == nil {
 			c.File("public/spectrum.html")
 		} else {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 		}
 	})
 
@@ -257,18 +257,18 @@ func main() {
 	r.POST("/spectrum/motd/:channel", func(c *gin.Context) {
 		email, err := c.Cookie("email")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		password, err := c.Cookie("password")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
 		_, err = Login(email, password)
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
@@ -302,16 +302,16 @@ func main() {
 	r.POST("/spectrum/channel", func(c *gin.Context) {
 		email, err := c.Cookie("email")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		password, err := c.Cookie("password")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		if _, err := Login(email, password); err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
@@ -335,16 +335,16 @@ func main() {
 	r.DELETE("/spectrum/channel/:channel", func(c *gin.Context) {
 		email, err := c.Cookie("email")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		password, err := c.Cookie("password")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		if _, err := Login(email, password); err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
@@ -362,16 +362,16 @@ func main() {
 	r.POST("/spectrum/starChannel/:channel", func(c *gin.Context) {
 		email, err := c.Cookie("email")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		password, err := c.Cookie("password")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		if _, err := Login(email, password); err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
@@ -431,18 +431,18 @@ func main() {
 	r.POST("/spectrum/:channel/motd", func(c *gin.Context) {
 		email, err := c.Cookie("email")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 		password, err := c.Cookie("password")
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
 		_, err = Login(email, password)
 		if err != nil {
-			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
 		}
 
