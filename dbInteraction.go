@@ -26,10 +26,17 @@ func init() {
 		reachable = false
 	}
 	fmt.Println("Connected to Firestore.")
+
+	go func() {
+		for {
+			SetUsersOffline()
+			time.Sleep(5 * time.Minute)
+		}
+	}()
 }
 
 func Register(username, email, password string) bool {
-	if !isValidEmail(email) {
+	if (!isValidEmail(email)) {
 		fmt.Println("Invalid email format")
 		return false
 	}
@@ -238,32 +245,29 @@ func SetMOTD(channel, message string) error {
 }
 
 func GetUsers() (map[string][]string, error) {
-	ctx := context.Background()
-	accounts, err := client.Collection("accounts").Documents(ctx).GetAll()
-	if err != nil {
-		return nil, err
-	}
+    ctx := context.Background()
+    accounts, err := client.Collection("accounts").Documents(ctx).GetAll()
+    if err != nil {
+        return nil, err
+    }
 
-	var staff []string
-	var backers []string
-	for _, doc := range accounts {
-		data := doc.Data()
-		username, ok := data["username"].(string)
-		if !ok {
-			continue
-		}
-		isAdmin, _ := data["admin"].(bool)
-		if isAdmin {
-			staff = append(staff, username)
-		} else {
-			backers = append(backers, username)
-		}
-	}
-
-	return map[string][]string{
-		"staff":   staff,
-		"backers": backers,
-	}, nil
+    var staff []string
+    var backers []string
+    for _, doc := range accounts {
+        data := doc.Data()
+        username, _ := data["username"].(string)
+        isAdmin, _ := data["admin"].(bool)
+        status, _ := data["status"].(string)
+        if isAdmin {
+            staff = append(staff, fmt.Sprintf("%s|%s", username, status))
+        } else {
+            backers = append(backers, fmt.Sprintf("%s|%s", username, status))
+        }
+    }
+    return map[string][]string{
+        "staff":   staff,
+        "backers": backers,
+    }, nil
 }
 
 func GetChannelMessages(channel string) ([]map[string]interface{}, error) {
@@ -338,4 +342,40 @@ func GetChannel(channel string) (bool, error) {
 		return false, err
 	}
 	return len(docs) > 0, nil
+}
+
+func UpdateUserStatus(email, status string) error {
+    ctx := context.Background()
+    userRef := client.Collection("accounts").Where("email", "==", email)
+    snaps, err := userRef.Documents(ctx).GetAll()
+    if err != nil || len(snaps) == 0 {
+        return errors.New("user not found")
+    }
+    _, err = snaps[0].Ref.Update(ctx, []firestore.Update{
+        {Path: "status", Value: status},
+        {Path: "lastActive", Value: firestore.ServerTimestamp},
+    })
+    return err
+}
+
+func SetUsersOffline() {
+    ctx := context.Background()
+    userRef := client.Collection("accounts")
+    snaps, err := userRef.Documents(ctx).GetAll()
+    if err != nil {
+        fmt.Println("Error fetching users:", err)
+        return
+    }
+    for _, snap := range snaps {
+        data := snap.Data()
+        lastActive, ok := data["lastActive"].(time.Time)
+        if !ok || time.Since(lastActive) > 10*time.Minute {
+            _, err := snap.Ref.Update(ctx, []firestore.Update{
+                {Path: "status", Value: "offline"},
+            })
+            if err != nil {
+                fmt.Println("Error setting user offline:", err)
+            }
+        }
+    }
 }

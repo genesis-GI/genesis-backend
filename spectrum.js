@@ -134,4 +134,56 @@ function switchChannel(channelName) {
     window.location.href = `/spectrum/${channelName}`;
 }
 
-module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, listenForMOTDUpdates, listenForChannelUpdates, listenForStarredChannelUpdates, switchChannel };
+async function setUserStatus(status) {
+    try {
+        await fetch("/spectrum/status", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({status})
+        });
+    } catch (error) {
+        console.error("Error updating status:", error);
+    }
+}
+
+function listenForStatusUpdates() {
+    const evtSource = new EventSource("/spectrum/status/updates");
+    evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        updateUserStatusDisplay(data);
+    };
+}
+
+function updateUserStatusDisplay(statusData) {
+    console.log("Received updated status data:", statusData);
+}
+
+let lastActivity = Date.now();
+const AWAY_TIMEOUT = 5 * 60 * 1000;
+
+document.addEventListener("click", resetActivity);
+document.addEventListener("keydown", resetActivity);
+
+function resetActivity() {
+    lastActivity = Date.now();
+    setUserStatus("online");
+}
+
+setInterval(() => {
+    if (Date.now() - lastActivity >= AWAY_TIMEOUT) {
+        setUserStatus("away");
+    }
+}, 60000);
+
+function renderUserList(users, containerId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+    users.forEach(userStr => {
+        const [username, status] = userStr.split("|");
+        const div = document.createElement("div");
+        div.textContent = username + " (" + (status || "offline") + ")";
+        container.appendChild(div);
+    });
+}
+
+module.exports = { setMOTD, getMOTD, getUsers, getChannel, createChannel, deleteChannel, getChannels, starChannel, getStarredChannels, listenForMOTDUpdates, listenForChannelUpdates, listenForStarredChannelUpdates, switchChannel, setUserStatus, listenForStatusUpdates };

@@ -143,12 +143,12 @@ func main() {
 	})
 
 	r.GET("/spectrum/users", func(c *gin.Context) {
-		users, err := GetUsers()
+		staffBackers, err := GetUsers()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 			return
 		}
-		c.JSON(http.StatusOK, users)
+		c.JSON(http.StatusOK, staffBackers)
 	})
 
 	r.GET("/spectrum/motd/updates/:channel", func(c *gin.Context) {
@@ -497,6 +497,48 @@ func main() {
 
 			c.SSEvent("message", motd)
 			return false // send once, then end
+		})
+	})
+
+	r.POST("/spectrum/status", func(c *gin.Context) {
+		email, err := c.Cookie("email")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		password, err := c.Cookie("password")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		if _, err := Login(email, password); err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+
+		var req struct {
+			Status string `json:"status"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := UpdateUserStatus(email, req.Status); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update status"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Status updated"})
+	})
+
+	r.GET("/spectrum/status/updates", func(c *gin.Context) {
+		c.Stream(func(w io.Writer) bool {
+			users, err := GetUsers()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+				return false
+			}
+			c.SSEvent("message", users)
+			return true
 		})
 	})
 

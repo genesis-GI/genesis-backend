@@ -69,9 +69,26 @@
             display: flex;
             align-items: center;
         }
-        .staff::before, .backer::before {
-            content: '👤';
+        .staff::before,
+        .backer::before {
+            content: "";
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
             margin-right: 5px;
+        }
+        .staff.online::before,
+        .backer.online::before {
+            background-color: green;
+        }
+        .staff.away::before,
+        .backer.away::before {
+            background-color: yellow;
+        }
+        .staff.offline::before,
+        .backer.offline::before {
+            background-color: gray;
         }
         .staff {
             color: gold;
@@ -276,10 +293,6 @@
         <div id="backers-list">
             <!-- Backers users will be dynamically added here -->
         </div>
-        <h3>Current User</h3>
-        <div id="current-user">
-            <!-- Current user info will be dynamically added here -->
-        </div>
     </div>
 
     <!-- The Modal -->
@@ -307,21 +320,44 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             autoLogin();
+            fetchUsers();
+            listenForStatusUpdates();
         });
+
+        window.addEventListener('beforeunload', () => {
+            setUserStatus("offline");
+        });
+
+        document.getElementById('homeButton').addEventListener('click', () => {
+            setUserStatus("offline").then(() => {
+                window.location.href = '/';
+            });
+        });
+
+        async function setUserStatus(newStatus) {
+            try {
+                await fetch("/spectrum/status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: newStatus })
+                });
+            } catch (error) {
+                console.error("Error setting user status:", error);
+            }
+        }
 
         async function autoLogin() {
             try {
                 const response = await fetch('/auto-login');
                 if (response.ok) {
                     const user = await response.json();
-                    const currentUserDiv = document.getElementById('current-user');
-                    currentUserDiv.innerHTML = `<p>Email: ${user.email}</p><p>Username: ${user.username}</p><p>Admin: ${user.admin}</p>`;
                     if (user.admin) {
                         document.getElementById('editMotdButton').style.display = 'block';
                         document.getElementById('createChannelButton').style.display = 'block';
                     } else {
                         document.getElementById('createChannelButton').style.display = 'none';
                     }
+                    await setUserStatus("online");
                     loadChannels();
                     switchChannel('genesis-testing-chat');
                     fetchUsers();
@@ -458,8 +494,6 @@
                 const response = await fetch('/spectrum/currentUser');
                 if (response.ok) {
                     const user = await response.json();
-                    const currentUserDiv = document.getElementById('current-user');
-                    currentUserDiv.innerHTML = `<p>Email: ${user.email}</p><p>Username: ${user.username}</p><p>Admin: ${user.admin}</p>`;
                     if (user.admin) {
                         document.getElementById('editMotdButton').style.display = 'block';
                         document.getElementById('createChannelButton').style.display = 'block';
@@ -621,35 +655,39 @@
 
         async function fetchUsers() {
             try {
-                const response = await fetch('/spectrum/users');
-                if (response.ok) {
-                    const users = await response.json();
-                    const staffList = document.getElementById('staff-list');
-                    const backersList = document.getElementById('backers-list');
-                    staffList.innerHTML = '';
-                    backersList.innerHTML = '';
-                    if (users.staff) {
-                        users.staff.forEach(user => {
-                            const userElement = document.createElement('p');
-                            userElement.innerText = user;
-                            userElement.classList.add('staff');
-                            staffList.appendChild(userElement);
-                        });
-                    }
-                    if (users.backers) {
-                        users.backers.forEach(user => {
-                            const userElement = document.createElement('p');
-                            userElement.innerText = user;
-                            userElement.classList.add('backer');
-                            backersList.appendChild(userElement);
-                        });
-                    }
-                } else {
-                    console.error('Failed to fetch users:', response.statusText);
-                }
+                const res = await fetch("/spectrum/users");
+                const data = await res.json();
+                renderUserList(data.staff, "staff-list");
+                renderUserList(data.backers, "backers-list");
             } catch (error) {
-                console.error('Error fetching users:', error);
+                console.error("Error fetching users:", error);
             }
+        }
+
+        function renderUserList(users, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            users.forEach(entry => {
+                const [username, status] = entry.split("|");
+                const div = document.createElement("div");
+                div.textContent = username;
+
+                if (containerId === "staff-list") {
+                    div.classList.add("staff");
+                } else if (containerId === "backers-list") {
+                    div.classList.add("backer");
+                }
+
+                if (status === "online") {
+                    div.classList.add("online");
+                } else if (status === "away") {
+                    div.classList.add("away");
+                } else {
+                    div.classList.add("offline");
+                }
+
+                container.appendChild(div);
+            });
         }
 
         function openMotdEditor() {
@@ -723,6 +761,36 @@
                 updateLastChanged(date);
             };
         }
+
+        function handleStatusChange(newStatus) {
+            setUserStatus(newStatus);
+        }
+
+        function listenForStatusUpdates() {
+            const eventSource = new EventSource('/spectrum/status/updates');
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                renderUserList(data.staff, "staff-list");
+                renderUserList(data.backers, "backers-list");
+            };
+        }
+
+        let lastActivity = Date.now();
+        const AWAY_TIMEOUT = 3 * 60 * 1000;
+
+        document.addEventListener("click", resetActivity);
+        document.addEventListener("keydown", resetActivity);
+
+        function resetActivity() {
+            lastActivity = Date.now();
+            setUserStatus("online");
+        }
+
+        setInterval(() => {
+            if (Date.now() - lastActivity >= AWAY_TIMEOUT) {
+                setUserStatus("away");
+            }
+        }, 60000);
     </script>
 </body>
 </html>
