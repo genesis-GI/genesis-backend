@@ -54,6 +54,7 @@
                     })
                 });
                 if (response.status !== 200) {
+                    console.log(response);
                     showNotification("Something went wrong, please try again", "error");
                 } else {
                     showNotification("Login successful!", "success");
