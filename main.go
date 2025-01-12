@@ -245,9 +245,10 @@ func main() {
 		user, err := Login(email, password)
 		if err == nil {
 			c.JSON(http.StatusOK, gin.H{
-				"email":    email,
-				"username": user["username"],
-				"admin":    user["admin"],
+				"email":        email,
+				"username":     user["username"],
+				"admin":        user["admin"],
+				"wantedStatus": user["wantedStatus"],
 			})
 		} else {
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid credentials"})
@@ -598,12 +599,89 @@ func main() {
 		})
 	}
 
-	r.GET("/logout", func(c *gin.Context){
+	r.GET("/logout", func(c *gin.Context) {
 		c.SetCookie("email", "", -1, "/", "localhost", false, true)
 		c.SetCookie("username", "", -1, "/", "localhost", false, true)
 		c.SetCookie("admin", "", -1, "/", "localhost", false, true)
 		c.SetCookie("password", "", -1, "/", "localhost", false, true)
 		c.File("public/landing.html")
+	})
+
+	r.POST("/spectrum/messages/:channel", func(c *gin.Context) {
+		email, err := c.Cookie("email")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		password, err := c.Cookie("password")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		_, err = Login(email, password)
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		channel := c.Param("channel")
+		var body struct {
+			Message string `json:"message"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err = CreateMessage(channel, email, body.Message)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Message sent"})
+	})
+
+	r.GET("/spectrum/:channel/messages/updates", func(c *gin.Context) {
+		channel := c.Param("channel")
+		c.Stream(func(w io.Writer) bool {
+			messages, err := GetChannelMessages(channel)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+				return false
+			}
+			c.SSEvent("message", messages)
+			return true // keep connection open for real-time updates
+		})
+	})
+
+	r.DELETE("/spectrum/messages/:channel/:messageID", func(c *gin.Context) {
+		email, err := c.Cookie("email")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		password, err := c.Cookie("password")
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+		_, err = Login(email, password)
+		if err != nil {
+			c.String(http.StatusForbidden, "Access forbidden: You must be logged in")
+			return
+		}
+
+		channel := c.Param("channel")
+		messageID := c.Param("messageID")
+
+		err = DeleteMessage(channel, email, messageID)
+		if err != nil {
+			if err.Error() == "permission denied" {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Permission denied"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete message"})
+			}
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Message deleted"})
 	})
 
 	fmt.Println("Server is running on http://localhost:8088")

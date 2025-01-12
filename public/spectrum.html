@@ -12,6 +12,7 @@
             font-family: Arial, sans-serif;
             background-color: #1a1a2e;
             color: #e0e0e0;
+            overflow: hidden; /* Prevent body from scrolling */
         }
         #sidebar {
             width: 200px;
@@ -51,6 +52,7 @@
             padding: 20px;
             margin-left: 220px; /* Increased margin to add space */
             margin-right: 220px; /* Increased margin to add space */
+            overflow: hidden; /* Prevent main content from scrolling */
         }
         #userbar {
             width: 200px;
@@ -89,6 +91,14 @@
         .staff.offline::before,
         .backer.offline::before {
             background-color: gray;
+        }
+        .staff.dnd::before,
+        .backer.dnd::before {
+            background-color: red;
+        }
+        .staff.playing::before,
+        .backer.playing::before {
+            background-color: blue;
         }
         .staff {
             color: gold;
@@ -151,10 +161,11 @@
             background-color: #1f4068;
             border-radius: 5px;
             padding: 10px;
+            overflow: hidden; /* Prevent chat container from scrolling */
         }
         #chat-messages {
             flex: 1;
-            overflow-y: auto;
+            overflow-y: auto; /* Make chat messages scrollable */
             margin-bottom: 10px;
         }
         #chat-input {
@@ -249,6 +260,10 @@
         a:visited {
             color: #1f78d1; /* Ensure visited links are also blue */
         }
+        .message-time {
+            font-size: smaller;
+            color: gray;
+        }
     </style>
 </head>
 <body>
@@ -274,12 +289,10 @@
             <p id="message"></p>
         </div>
         <div id="chat">
-            <div id="chat-messages">
-                <!-- Chat messages will appear here -->
-            </div>
+            <div id="chat-messages"></div>
             <div id="chat-input">
-                <input type="text" id="messageInput" placeholder="Message genesis-testing-chat" disabled>
-                <button disabled >Send</button>
+                <input type="text" id="messageInput" placeholder="Type a message..." />
+                <button id="sendMessageBtn">Send</button>
             </div>
         </div>
     </div>
@@ -292,6 +305,16 @@
         <h3>Backers</h3>
         <div id="backers-list">
             <!-- Backers users will be dynamically added here -->
+        </div>
+        <div>
+            <label for="statusDropdown">Set Status:</label>
+            <select id="statusDropdown" onchange="handleStatusChange(this.value)">
+                <option value="online">Online</option>
+                <option value="away">Away</option>
+                <option value="offline">Offline</option>
+                <option value="dnd">Do Not Disturb</option>
+                <option value="playing">Playing</option>
+            </select>
         </div>
     </div>
 
@@ -322,6 +345,7 @@
             autoLogin();
             fetchUsers();
             listenForStatusUpdates();
+            setInterval(updateMessageTimes, 1000); // Update message times every second for real-time effect
         });
 
         window.addEventListener('beforeunload', () => {
@@ -431,6 +455,15 @@
             lastChangedInterval = setInterval(refresh, 60000);
         }
 
+        function updateMessageTimes() {
+            const now = new Date();
+            document.querySelectorAll('.message-time').forEach(span => {
+                const timestamp = new Date(parseInt(span.dataset.timestamp));
+                const secondsDiff = Math.floor((now - timestamp) / 1000);
+                span.innerText = formatTime(secondsDiff);
+            });
+        }
+
         async function switchChannel(channel) {
             console.log('Switching to channel:', channel);
             // If you want to force all channels to lower-case in Firestore:
@@ -474,19 +507,14 @@
                 const response = await fetch(`/spectrum/${channel}/messages`);
                 if (response.ok) {
                     const messages = await response.json();
-                    const chatContainer = document.getElementById('chat-messages');
-                    chatContainer.innerHTML = '';
-                    messages.forEach(msg => {
-                        const p = document.createElement('p');
-                        p.textContent = msg["text"]; // adjust to your field name
-                        chatContainer.appendChild(p);
-                    });
+                    renderMessages(messages);
                 }
             } catch (error) {
                 console.error('Error fetching messages:', error);
             }
 
             listenForMOTDUpdates(channel);
+            listenForMessageUpdates(channel);
         }
 
         async function checkCurrentUser() {
@@ -682,6 +710,10 @@
                     div.classList.add("online");
                 } else if (status === "away") {
                     div.classList.add("away");
+                } else if (status === "dnd") {
+                    div.classList.add("dnd");
+                } else if (status === "playing") {
+                    div.classList.add("playing");
                 } else {
                     div.classList.add("offline");
                 }
@@ -783,14 +815,104 @@
 
         function resetActivity() {
             lastActivity = Date.now();
-            setUserStatus("online");
+            if(status == "away") {
+                setUserStatus("online");
+            }
         }
 
         setInterval(() => {
-            if (Date.now() - lastActivity >= AWAY_TIMEOUT) {
+            if (Date.now() - lastActivity >= AWAY_TIMEOUT && status === "online") {
                 setUserStatus("away");
             }
         }, 60000);
+
+        document.getElementById('sendMessageBtn').addEventListener('click', async () => {
+            const channel = "genesis-testing-chat";
+            const msg = document.getElementById('messageInput').value.trim();
+            if(msg) {
+                await fetch(`/spectrum/messages/${channel}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+                document.getElementById('messageInput').value = "";
+            }
+        });
+
+        async function deleteMessage(channel, messageID) {
+            try {
+                const response = await fetch(`/spectrum/messages/${channel}/${messageID}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    showNotification('Message deleted successfully', 'success');
+                    switchChannel(channel);
+                } else {
+                    const errorData = await response.json();
+                    showNotification(errorData.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting message:', error);
+                showNotification('Error deleting message', 'error');
+            }
+        }
+
+        function renderMessages(messages) {
+            const chatContainer = document.getElementById('chat-messages');
+            chatContainer.innerHTML = '';
+            messages.forEach(msg => {
+                const p = document.createElement('p');
+                const rawTime = msg["timestamp"];
+                const messageID = msg["id"];
+                if (rawTime && rawTime._seconds !== undefined) {
+                    const dt = new Date(rawTime._seconds * 1000 + rawTime._nanoseconds / 1e6);
+                    const now = new Date();
+                    const secondsDiff = Math.floor((now - dt) / 1000);
+                    const timeLabel = formatTime(secondsDiff);
+                    p.innerHTML = `<span class="username">${msg["username"]}</span> [<span class="message-time" data-timestamp="${dt.getTime()}">${timeLabel}</span>]: ${msg["message"]}`;
+                    p.style.color = msg["admin"] ? 'gold' : '#1f78d1';
+                } else {
+                    p.innerHTML = `<span class="username">${msg["username"]}</span>: ${msg["message"]}`;
+                    p.style.color = msg["admin"] ? 'gold' : '#1f78d1';
+                }
+
+                const deleteButton = document.createElement('button');
+                deleteButton.innerText = 'Delete';
+                deleteButton.onclick = () => deleteMessage(document.getElementById('currentChannelName').innerText, messageID);
+                p.appendChild(deleteButton);
+
+                chatContainer.appendChild(p);
+            });
+        }
+
+        function listenForMessageUpdates(channel) {
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+            currentEventSource = new EventSource(`/spectrum/${channel}/messages/updates`);
+            currentEventSource.onmessage = function(event) {
+                const messages = JSON.parse(event.data);
+                renderMessages(messages);
+            };
+        }
+
+        function timeAgo(date) {            const now = new Date();
+            const secondsElapsed = Math.floor((now - date) / 1000);
+            if (secondsElapsed < 60) {
+                return `${secondsElapsed} second${secondsElapsed === 1 ? '' : 's'} ago`;
+            }
+            const minutesElapsed = Math.floor(secondsElapsed / 60);
+            if (minutesElapsed < 60) {
+                return `${minutesElapsed} minute${minutesElapsed === 1 ? '' : 's'} ago`;
+            }
+            const hoursElapsed = Math.floor(minutesElapsed / 60);
+            if (hoursElapsed < 24) {
+                return `${hoursElapsed} hour${hoursElapsed === 1 ? '' : 's'} ago`;
+            }
+            const daysElapsed = Math.floor(hoursElapsed / 24);
+            return `${daysElapsed} day${daysElapsed === 1 ? '' : 's'} ago`;
+        }
     </script>
 </body>
 </html>

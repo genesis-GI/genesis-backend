@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
-	"encoding/json"
 
 	"cloud.google.com/go/firestore"
 	"golang.org/x/crypto/bcrypt"
@@ -36,7 +36,7 @@ func init() {
 }
 
 func Register(username, email, password string) bool {
-	if (!isValidEmail(email)) {
+	if !isValidEmail(email) {
 		fmt.Println("Invalid email format")
 		return false
 	}
@@ -63,14 +63,14 @@ func Register(username, email, password string) bool {
 	}
 
 	_, _, err = userRef.Add(ctx, map[string]interface{}{
-		"username":      username,
-		"email":         email,
-		"password":      string(hashedPassword),
-		"admin":         false,
-		"wave":          5,
-		"created_at":    time.Now(),
-		"ownsGame":      false,
-		"ingame":        map[string]interface{}{"inventory": map[string]interface{}{}, "currency": 0},
+		"username":       username,
+		"email":          email,
+		"password":       string(hashedPassword),
+		"admin":          false,
+		"wave":           5,
+		"created_at":     time.Now(),
+		"ownsGame":       false,
+		"ingame":         map[string]interface{}{"inventory": map[string]interface{}{}, "currency": 0},
 		"playerLocation": map[string]interface{}{"x": 0, "y": 0, "z": 0},
 	})
 	if err != nil {
@@ -126,7 +126,7 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 	}
 
 	builds, ok := gameConfig["builds"].([]interface{})
-	if !ok {
+	if (!ok) {
 		fmt.Println("Invalid builds data:", gameConfig["builds"])
 		return nil, errors.New("invalid builds data")
 	}
@@ -135,7 +135,7 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 	allowedBuilds := []interface{}{}
 	for _, build := range builds {
 		buildMap, ok := build.(map[string]interface{})
-		if !ok {
+		if (!ok) {
 			fmt.Println("Invalid build map:", build)
 			continue
 		}
@@ -164,7 +164,7 @@ func FetchRemoteConfig() (map[string]interface{}, error) {
 	}
 
 	parameters, ok := configData["parameters"].(map[string]interface{})
-	if (!ok) {
+	if !ok {
 		return nil, errors.New("invalid parameters data")
 	}
 
@@ -235,7 +235,7 @@ func GetMOTD(channel string) (map[string]interface{}, error) {
 
 func SetMOTD(channel, message string) error {
 	ctx := context.Background()
-	_, err := client.Collection("spectrum-" + channel).
+	_, err := client.Collection("spectrum-"+channel).
 		Doc("motd").
 		Set(ctx, map[string]interface{}{
 			"message": message,
@@ -245,29 +245,33 @@ func SetMOTD(channel, message string) error {
 }
 
 func GetUsers() (map[string][]string, error) {
-    ctx := context.Background()
-    accounts, err := client.Collection("accounts").Documents(ctx).GetAll()
-    if err != nil {
-        return nil, err
-    }
+	ctx := context.Background()
+	accounts, err := client.Collection("accounts").Documents(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
 
-    var staff []string
-    var backers []string
-    for _, doc := range accounts {
-        data := doc.Data()
-        username, _ := data["username"].(string)
-        isAdmin, _ := data["admin"].(bool)
-        status, _ := data["status"].(string)
-        if isAdmin {
-            staff = append(staff, fmt.Sprintf("%s|%s", username, status))
-        } else {
-            backers = append(backers, fmt.Sprintf("%s|%s", username, status))
-        }
-    }
-    return map[string][]string{
-        "staff":   staff,
-        "backers": backers,
-    }, nil
+	var staff []string
+	var backers []string
+	for _, doc := range accounts {
+		data := doc.Data()
+		username, _ := data["username"].(string)
+		isAdmin, _ := data["admin"].(bool)
+		status, _ := data["status"].(string)
+		wantedStatus, _ := data["wantedStatus"].(string)
+		if wantedStatus != "" {
+			status = wantedStatus
+		}
+		if isAdmin {
+			staff = append(staff, fmt.Sprintf("%s|%s", username, status))
+		} else {
+			backers = append(backers, fmt.Sprintf("%s|%s", username, status))
+		}
+	}
+	return map[string][]string{
+		"staff":   staff,
+		"backers": backers,
+	}, nil
 }
 
 func GetChannelMessages(channel string) ([]map[string]interface{}, error) {
@@ -280,14 +284,16 @@ func GetChannelMessages(channel string) ([]map[string]interface{}, error) {
 
 	var messages []map[string]interface{}
 	for _, doc := range docs {
-		messages = append(messages, doc.Data())
+		msg := doc.Data()
+		msg["id"] = doc.Ref.ID // Include the message ID
+		messages = append(messages, msg)
 	}
 	return messages, nil
 }
 
 func CreateChannel(channel string) error {
 	ctx := context.Background()
-	_, err := client.Collection("spectrum-" + channel).Doc("chat").Set(ctx, map[string]interface{}{
+	_, err := client.Collection("spectrum-"+channel).Doc("chat").Set(ctx, map[string]interface{}{
 		"created_at": time.Now(),
 	})
 	return err
@@ -345,37 +351,93 @@ func GetChannel(channel string) (bool, error) {
 }
 
 func UpdateUserStatus(email, status string) error {
-    ctx := context.Background()
-    userRef := client.Collection("accounts").Where("email", "==", email)
-    snaps, err := userRef.Documents(ctx).GetAll()
-    if err != nil || len(snaps) == 0 {
-        return errors.New("user not found")
-    }
-    _, err = snaps[0].Ref.Update(ctx, []firestore.Update{
-        {Path: "status", Value: status},
-        {Path: "lastActive", Value: firestore.ServerTimestamp},
-    })
-    return err
+	ctx := context.Background()
+	userRef := client.Collection("accounts").Where("email", "==", email)
+	snaps, err := userRef.Documents(ctx).GetAll()
+	if err != nil || len(snaps) == 0 {
+		return errors.New("user not found")
+	}
+	_, err = snaps[0].Ref.Update(ctx, []firestore.Update{
+		{Path: "status", Value: status},
+		{Path: "wantedStatus", Value: status},
+		{Path: "lastActive", Value: firestore.ServerTimestamp},
+	})
+	return err
 }
 
 func SetUsersOffline() {
-    ctx := context.Background()
-    userRef := client.Collection("accounts")
-    snaps, err := userRef.Documents(ctx).GetAll()
-    if err != nil {
-        fmt.Println("Error fetching users:", err)
-        return
-    }
-    for _, snap := range snaps {
-        data := snap.Data()
-        lastActive, ok := data["lastActive"].(time.Time)
-        if !ok || time.Since(lastActive) > 10*time.Minute {
-            _, err := snap.Ref.Update(ctx, []firestore.Update{
-                {Path: "status", Value: "offline"},
-            })
-            if err != nil {
-                fmt.Println("Error setting user offline:", err)
-            }
-        }
-    }
+	ctx := context.Background()
+	userRef := client.Collection("accounts")
+	snaps, err := userRef.Documents(ctx).GetAll()
+	if err != nil {
+		fmt.Println("Error fetching users:", err)
+		return
+	}
+	for _, snap := range snaps {
+		data := snap.Data()
+		lastActive, ok := data["lastActive"].(time.Time)
+		if !ok || time.Since(lastActive) > 10*time.Minute {
+			_, err := snap.Ref.Update(ctx, []firestore.Update{
+				{Path: "status", Value: "offline"},
+			})
+			if err != nil {
+				fmt.Println("Error setting user offline:", err)
+			}
+		}
+	}
+}
+
+func CreateMessage(channel, email, message string) error {
+	ctx := context.Background()
+	fmt.Println("Saving message for channel:", channel)
+	user, err := GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+	username, _ := user["username"].(string)
+	admin, _ := user["admin"].(bool)
+	_, _, err = client.Collection("spectrum-"+channel).
+		Doc("chat").Collection("messages").
+		Add(ctx, map[string]interface{}{
+			"username":  username,
+			"email":     email,
+			"admin":     admin,
+			"message":   message,
+			"timestamp": time.Now(),
+		})
+	if err != nil {
+		fmt.Println("Error saving message:", err)
+	} else {
+		fmt.Println("Message saved:", message)
+	}
+	return err
+}
+
+func DeleteMessage(channel, email, messageID string) error {
+	ctx := context.Background()
+	user, err := GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+	admin, _ := user["admin"].(bool)
+
+	messageRef := client.Collection("spectrum-" + channel).Doc("chat").Collection("messages").Doc(messageID)
+	messageDoc, err := messageRef.Get(ctx)
+	if err != nil {
+		return err
+	}
+
+	messageData := messageDoc.Data()
+	messageOwner, _ := messageData["email"].(string)
+
+	if admin || messageOwner == email {
+		_, err = messageRef.Delete(ctx)
+		if err != nil {
+			return err
+		}
+	} else {
+		return errors.New("permission denied")
+	}
+
+	return nil
 }
