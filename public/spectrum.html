@@ -168,6 +168,17 @@
             overflow-y: auto; /* Make chat messages scrollable */
             margin-bottom: 10px;
         }
+        #chat-messages::-webkit-scrollbar {
+            width: 12px;
+        }
+        #chat-messages::-webkit-scrollbar-track {
+            background: #1f4068;
+        }
+        #chat-messages::-webkit-scrollbar-thumb {
+            background-color: #888;
+            border-radius: 10px;
+            border: 3px solid #1f4068;
+        }
         #chat-input {
             display: flex;
         }
@@ -839,6 +850,24 @@
             }
         });
 
+        document.getElementById('messageInput').addEventListener('keypress', async (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const channel = document.getElementById('currentChannelName').innerText;
+                const msg = document.getElementById('messageInput').value.trim();
+                if (msg) {
+                    await fetch(`/spectrum/messages/${channel}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: msg })
+                    });
+                    document.getElementById('messageInput').value = "";
+                    const chatContainer = document.getElementById('chat-messages');
+                    chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom after sending a message
+                }
+            }
+        });
+
         async function deleteMessage(channel, messageID) {
             try {
                 const response = await fetch(`/spectrum/messages/${channel}/${messageID}`, {
@@ -864,7 +893,6 @@
             messages.forEach(msg => {
                 const p = document.createElement('p');
                 const rawTime = msg["timestamp"];
-                const messageID = msg["id"];
                 if (rawTime && rawTime._seconds !== undefined) {
                     const dt = new Date(rawTime._seconds * 1000 + rawTime._nanoseconds / 1e6);
                     const now = new Date();
@@ -876,12 +904,6 @@
                     p.innerHTML = `<span class="username">${msg["username"]}</span>: ${msg["message"]}`;
                     p.style.color = msg["admin"] ? 'gold' : '#1f78d1';
                 }
-
-                const deleteButton = document.createElement('button');
-                deleteButton.innerText = 'Delete';
-                deleteButton.onclick = () => deleteMessage(document.getElementById('currentChannelName').innerText, messageID);
-                p.appendChild(deleteButton);
-
                 chatContainer.appendChild(p);
             });
         }
@@ -896,6 +918,12 @@
                 renderMessages(messages);
             };
         }
+
+        // Ensure we scroll to the bottom on initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatContainer = document.getElementById('chat-messages');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        });
 
         function timeAgo(date) {            const now = new Date();
             const secondsElapsed = Math.floor((now - date) / 1000);
