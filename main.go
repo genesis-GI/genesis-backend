@@ -684,8 +684,8 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"message": "Message deleted"})
 	})
 
-	fmt.Println("Server is running on http://localhost:8808")
-	r.Run(":8808")
+	fmt.Println("Server is running on http://localhost:8088")
+	r.Run(":8088")
 }
 
 func calculateChecksums(dir string) (map[string]string, error) {
