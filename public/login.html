@@ -74,7 +74,11 @@
             if (response.ok) {
                 showNotification("Login successful", "success");
                 // Redirect to another page if needed
-                window.location.href = '/dashboard';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
             } else {
                 const errorData = await response.json();
                 showNotification(`Login failed: ${errorData.message}`, "error");
