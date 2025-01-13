@@ -27,12 +27,6 @@ func init() {
 	}
 	fmt.Println("Connected to Firestore.")
 
-	go func() {
-		for {
-			SetUsersOffline()
-			time.Sleep(5 * time.Minute)
-		}
-	}()
 }
 
 func Register(username, email, password string) bool {
@@ -359,33 +353,39 @@ func UpdateUserStatus(email, status string) error {
 	}
 	_, err = snaps[0].Ref.Update(ctx, []firestore.Update{
 		{Path: "status", Value: status},
-		{Path: "wantedStatus", Value: status},
 		{Path: "lastActive", Value: firestore.ServerTimestamp},
 	})
 	return err
 }
 
-func SetUsersOffline() {
+func getUserWantedStatus(email string) string {
 	ctx := context.Background()
-	userRef := client.Collection("accounts")
+	userRef := client.Collection("accounts").Where("email", "==", email)
 	snaps, err := userRef.Documents(ctx).GetAll()
-	if err != nil {
-		fmt.Println("Error fetching users:", err)
-		return
+	if err != nil || len(snaps) == 0 {
+		return "Error fetching user"
 	}
-	for _, snap := range snaps {
-		data := snap.Data()
-		lastActive, ok := data["lastActive"].(time.Time)
-		if !ok || time.Since(lastActive) > 10*time.Minute {
-			_, err := snap.Ref.Update(ctx, []firestore.Update{
-				{Path: "status", Value: "offline"},
-			})
-			if err != nil {
-				fmt.Println("Error setting user offline:", err)
-			}
-		}
-	}
+	data := snaps[0].Data()
+	status, _ := data["wantedStatus"].(string)
+	return status
 }
+
+func updateUserWantedStatus(email, status string) error {
+    ctx := context.Background()
+    userRef := client.Collection("accounts").Where("email", "==", email)
+    snaps, err := userRef.Documents(ctx).GetAll()
+    if err != nil || len(snaps) == 0 {
+        return fmt.Errorf("Error fetching user: %v", err)
+    }
+    _, err = snaps[0].Ref.Update(ctx, []firestore.Update{
+        {Path: "wantedStatus", Value: status},
+    })
+    if err != nil {
+        return fmt.Errorf("Error updating user wanted status: %v", err)
+    }
+    return nil
+}
+
 
 func CreateMessage(channel, email, message string) error {
 	ctx := context.Background()

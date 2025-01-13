@@ -359,25 +359,58 @@
             setInterval(updateMessageTimes, 1000); // Update message times every second for real-time effect
         });
 
-        window.addEventListener('beforeunload', () => {
-            setUserStatus("offline");
-        });
+        // Remove or comment out the beforeunload listener to avoid forcing offline on reload
+        // window.addEventListener('beforeunload', async () => {
+        //     console.log("User is leaving the page");
+        //     console.log("Setting user status to offline");
+        //     await setUserStatus("offline", false);
+        // });
 
         document.getElementById('homeButton').addEventListener('click', () => {
-            setUserStatus("offline").then(() => {
+            console.log("User is leaving the page");
+            console.log("Setting user status to offline");
+            setUserStatus("offline", false).then(() => {
                 window.location.href = '/';
             });
         });
 
-        async function setUserStatus(newStatus) {
+        async function setUserStatus(newStatus, updateWantedStatus = false) {
             try {
+                // Set the new status
                 await fetch("/spectrum/status", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ status: newStatus })
                 });
+
+                // Optionally save the new status as the wanted status
+                if (updateWantedStatus) {
+                    const userEmail = await getCurrentUserEmail();
+                    await fetch(`/spectrum/setUserWantedStatus/${userEmail}/${newStatus}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" }
+                    });
+                }
+               if(updateWantedStatus){
+                console.log("Setting wanted status ")
+               }
+
+                console.log("Status set to:", newStatus);
+                if (updateWantedStatus) {
+                    console.log("Wanted status set to:", newStatus);
+                }
             } catch (error) {
                 console.error("Error setting user status:", error);
+            }
+        }
+
+        async function getCurrentUserEmail() {
+            const response = await fetch('/auto-login');
+            if (response.ok) {
+                const user = await response.json();
+                return user.email;
+            } else {
+                throw new Error("Failed to fetch user email");
             }
         }
 
@@ -392,7 +425,25 @@
                     } else {
                         document.getElementById('createChannelButton').style.display = 'none';
                     }
-                    await setUserStatus("online");
+
+                    // Set the current user status to the wanted status here
+
+                    // Fetch and set the wanted status in the dropdown
+                    const wantedStatusResponse = await fetch(`/spectrum/getUserWantedStatus/${user.email}`);
+                    if (wantedStatusResponse.ok) {
+                        const wantedStatusData = await wantedStatusResponse.json();
+                        const wantedStatus = wantedStatusData.status;
+
+                        // Set the dropdown to the wanted status
+                        const statusDropdown = document.getElementById('statusDropdown');
+                        if (statusDropdown) {
+                            statusDropdown.value = wantedStatus;
+                            setUserStatus(wantedStatus, false); // immediately use wanted status as current
+                        }
+                    } else {
+                        console.error("Failed to fetch wanted status");
+                    }
+
                     loadChannels();
                     switchChannel('genesis-testing-chat');
                     fetchUsers();
@@ -426,27 +477,8 @@
             const days = Math.floor(hours / 24);
             if (days == 1) {
                 return `${days} day ago`;
-            } else if (days < 7) {
-                return `${days} days ago`;
-            }
-
-            const weeks = Math.floor(days / 7);
-            if (weeks == 1) {
-                return `${weeks} week ago`;
-            } else if (weeks < 4) {
-                return `${weeks} weeks ago`;
-            }
-
-            const months = Math.floor(days / 30);
-            if (months < 12) {
-                return `${months} months ago`;
-            }
-
-            const years = Math.floor(days / 365);
-            if (years == 1) {
-                return `${years} year ago`;
             } else {
-                return `${years} years ago`;
+                return `${days} days ago`;
             }
         }
 
@@ -564,7 +596,7 @@
             }
 
             // Listen for real-time updates
-            listenForChannelUpdates();
+            //listenForChannelUpdates();
         }
 
         function updateChannelsList(channels) {
@@ -574,6 +606,7 @@
                 const button = document.createElement('button');
                 button.id = channel;
                 button.innerHTML = `${channel} <span class="star" onclick="starChannel(event, '${channel}')">☆</span>`;
+                try{
                 if (document.getElementById('current-user').innerHTML.includes('Admin: true')) {
                     const trashIcon = document.createElement('span');
                     trashIcon.classList.add('trash');
@@ -583,6 +616,9 @@
                 }
                 button.onclick = () => switchChannel(channel);
                 channelsList.appendChild(button);
+                } catch (error) {
+                    console.error('Error updating channels list:', error);
+                }
             });
         }
 
@@ -590,7 +626,11 @@
             const eventSource = new EventSource('/spectrum/channels/updates');
             eventSource.onmessage = function(event) {
                 const channels = JSON.parse(event.data);
+                try{
                 updateChannelsList(channels);
+                }catch(error){
+                    console.log("Error while listening for channel updates")
+                }
             };
         }
 
@@ -805,8 +845,9 @@
             };
         }
 
-        function handleStatusChange(newStatus) {
-            setUserStatus(newStatus);
+        function handleStatusChange() {
+            const newStatus = document.getElementById('statusDropdown').value;
+            setUserStatus(newStatus, true); // also update wanted status
         }
 
         function listenForStatusUpdates() {
@@ -826,14 +867,16 @@
 
         function resetActivity() {
             lastActivity = Date.now();
-            if(status == "away") {
-                setUserStatus("online");
+            const currentStatus = document.getElementById('statusDropdown').value;
+            if (currentStatus === "away") {
+                setUserStatus("online", false);
             }
         }
 
         setInterval(() => {
-            if (Date.now() - lastActivity >= AWAY_TIMEOUT && status === "online") {
-                setUserStatus("away");
+            const currentStatus = document.getElementById('statusDropdown').value;
+            if (currentStatus === "online" && Date.now() - lastActivity >= AWAY_TIMEOUT) {
+                setUserStatus("away", false);
             }
         }, 60000);
 

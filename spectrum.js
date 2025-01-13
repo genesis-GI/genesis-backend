@@ -212,8 +212,8 @@ async function autoLogin() {
             } else {
                 document.getElementById('createChannelButton').style.display = 'none';
             }
-            document.getElementById('statusDropdown').value = user.wantedStatus || "online";
-            await setUserStatus(user.wantedStatus || "online");
+            //document.getElementById('statusDropdown').value = user.wantedStatus || "online";
+            //await setUserStatus(user.wantedStatus || "online");
             loadChannels(); // Ensure channels are loaded after login
             switchChannel('genesis-testing-chat');
             fetchUsers();

@@ -684,6 +684,25 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"message": "Message deleted"})
 	})
 
+	r.GET("/spectrum/getUserWantedStatus/:email", func(c *gin.Context) {
+		email := c.Param("email")
+		status := getUserWantedStatus(email)
+		c.JSON(http.StatusOK, gin.H{"status": status})
+	})
+
+	r.POST("/spectrum/setUserWantedStatus/:email/:status", func(c *gin.Context){
+		email := c.Param("email")
+		status := c.Param("status")
+
+
+		err := updateUserWantedStatus(email, status)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set wanted status"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Wanted status set"})
+	})
+
 	fmt.Println("Server is running on http://localhost:8088")
 	r.Run(":8088")
 }
