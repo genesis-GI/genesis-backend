@@ -120,7 +120,7 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 	}
 
 	builds, ok := gameConfig["builds"].([]interface{})
-	if !ok {
+	if (!ok) {
 		fmt.Println("Invalid builds data:", gameConfig["builds"])
 		return nil, errors.New("invalid builds data")
 	}
