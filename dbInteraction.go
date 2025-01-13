@@ -120,7 +120,7 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 	}
 
 	builds, ok := gameConfig["builds"].([]interface{})
-	if (!ok) {
+	if !ok {
 		fmt.Println("Invalid builds data:", gameConfig["builds"])
 		return nil, errors.New("invalid builds data")
 	}
@@ -129,7 +129,7 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 	allowedBuilds := []interface{}{}
 	for _, build := range builds {
 		buildMap, ok := build.(map[string]interface{})
-		if (!ok) {
+		if !ok {
 			fmt.Println("Invalid build map:", build)
 			continue
 		}
@@ -371,21 +371,20 @@ func getUserWantedStatus(email string) string {
 }
 
 func updateUserWantedStatus(email, status string) error {
-    ctx := context.Background()
-    userRef := client.Collection("accounts").Where("email", "==", email)
-    snaps, err := userRef.Documents(ctx).GetAll()
-    if err != nil || len(snaps) == 0 {
-        return fmt.Errorf("Error fetching user: %v", err)
-    }
-    _, err = snaps[0].Ref.Update(ctx, []firestore.Update{
-        {Path: "wantedStatus", Value: status},
-    })
-    if err != nil {
-        return fmt.Errorf("Error updating user wanted status: %v", err)
-    }
-    return nil
+	ctx := context.Background()
+	userRef := client.Collection("accounts").Where("email", "==", email)
+	snaps, err := userRef.Documents(ctx).GetAll()
+	if err != nil || len(snaps) == 0 {
+		return fmt.Errorf("Error fetching user: %v", err)
+	}
+	_, err = snaps[0].Ref.Update(ctx, []firestore.Update{
+		{Path: "wantedStatus", Value: status},
+	})
+	if err != nil {
+		return fmt.Errorf("Error updating user wanted status: %v", err)
+	}
+	return nil
 }
-
 
 func CreateMessage(channel, email, message string) error {
 	ctx := context.Background()
@@ -440,4 +439,52 @@ func DeleteMessage(channel, email, messageID string) error {
 	}
 
 	return nil
+}
+
+func StartFirestoreListeners() {
+	ctx := context.Background()
+
+	// Example listener for all user accounts (to get user status updates).
+	accountsIter := client.Collection("accounts").Snapshots(ctx)
+	go func() {
+		for {
+			snap, err := accountsIter.Next()
+			if err != nil {
+				fmt.Println("Error in accounts listener:", err)
+				return
+			}
+			fmt.Println("Accounts changed:", snap.Changes)
+			// Broadcast these changes via SSE or WebSockets
+		}
+	}()
+
+	// Example listener for a specific channel’s MOTD doc.
+	motdIter := client.Collection("spectrum-mychannel").Doc("motd").Snapshots(ctx)
+	go func() {
+		for {
+			snap, err := motdIter.Next()
+			if err != nil {
+				fmt.Println("Error in MOTD listener:", err)
+				return
+			}
+			fmt.Println("MOTD changed:", snap.Data())
+			// Broadcast changes here
+		}
+	}()
+
+	// Example listener for channel messages (already present).
+	chRef := client.Collection("spectrum-mychannel").Doc("chat").Collection("messages")
+	snapIter := chRef.Snapshots(ctx)
+	go func() {
+		for {
+			snap, err := snapIter.Next()
+			if err != nil {
+				fmt.Println("Error in Firestore listener:", err)
+				return
+			}
+			fmt.Println("New messages snapshot:", snap.Changes)
+			// Broadcast changes to your SSE or websockets here
+			fmt.Println("New messages snapshot:", snap.Changes)
+		}
+	}()
 }
