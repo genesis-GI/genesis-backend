@@ -600,10 +600,10 @@ func main() {
 	}
 
 	r.GET("/logout", func(c *gin.Context) {
-		c.SetCookie("email", "", -1, "/", "localhost", false, true)
-		c.SetCookie("username", "", -1, "/", "localhost", false, true)
-		c.SetCookie("admin", "", -1, "/", "localhost", false, true)
-		c.SetCookie("password", "", -1, "/", "localhost", false, true)
+		c.SetCookie("email", "", -1, "/", "", false, true)
+		c.SetCookie("username", "", -1, "/", "", false, true)
+		c.SetCookie("admin", "", -1, "/", "", false, true)
+		c.SetCookie("password", "", -1, "/", "", false, true)
 		c.File("public/landing.html")
 	})
 
