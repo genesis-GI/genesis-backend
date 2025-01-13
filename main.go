@@ -703,6 +703,8 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"message": "Wanted status set"})
 	})
 
+	StartFirestoreListeners()
+
 	fmt.Println("Server is running on http://localhost:8088")
 	r.Run(":8088")
 }

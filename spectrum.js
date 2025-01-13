@@ -62,17 +62,6 @@ function listenForMOTDUpdates(channel, callback) {
             callback(motdInfos);
         }
     });
-    const sound = new Audio('/public/notification.mp3'); // Add your sound
-    const source = new EventSource(`/spectrum/motd/updates/${channel}`);
-    let lastMOTD = null;
-    source.onmessage = event => {
-        const motd = JSON.parse(event.data);
-        if (lastMOTD && motd.message !== lastMOTD.message) {
-            sound.play().catch(() => {});
-        }
-        lastMOTD = motd;
-        if (callback) callback(motd);
-    };
 }
 
 function listenForChannelUpdates(callback) {
