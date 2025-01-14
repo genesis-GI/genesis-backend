@@ -9,17 +9,15 @@
 <body>
     <div id="notification" class="hidden"></div>
     <h1>Download the Genesis Launcher</h1>
-    <h4>Account needed for usage</h4>
     
     <h1> </h1>
     <button onclick="download()">Download</button>
-    <h1> </h1>
     <button onclick="window.location.href='/'">Home</button>
 </body>
 <script>
     function download(){
         //window.location.href='/';    -> Launcher download link 
-        showNotification("Launcher is not finished and can't be downloaded yet!", 'error')
+        showNotification("Launcher comming soon!", 'warning')
     }
 
     const notification = document.getElementById('notification');
