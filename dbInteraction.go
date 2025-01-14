@@ -23,16 +23,22 @@ func init() {
 	var err error
 	client, err = firestore.NewClient(ctx, "genesis-1f378", sa)
 	if err != nil {
-		fmt.Println("Error during database initialization phase.\nDatabase is not available")
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("Error during database initialization phase.\nDatabase is not available")
+		}
 		reachable = false
 	}
-	fmt.Println("Connected to Firestore.")
+	if gin.Mode() == gin.DebugMode {
+		fmt.Println("Connected to Firestore.")
+	}
 
 }
 
 func Register(username, email, password string) bool {
 	if !isValidEmail(email) {
-		fmt.Println("Invalid email format")
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("Invalid email format")
+		}
 		return false
 	}
 
@@ -41,19 +47,25 @@ func Register(username, email, password string) bool {
 
 	userSnapshot, err := userRef.Where("username", "==", username).Documents(ctx).GetAll()
 	if err != nil || len(userSnapshot) > 0 {
-		fmt.Println("User already registered")
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("User already registered")
+		}
 		return false
 	}
 
 	emailSnapshot, err := userRef.Where("email", "==", email).Documents(ctx).GetAll()
 	if err != nil || len(emailSnapshot) > 0 {
-		fmt.Println("User already registered")
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("User already registered")
+		}
 		return false
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		fmt.Println("Error hashing password")
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("Error hashing password")
+		}
 		return false
 	}
 
@@ -69,11 +81,15 @@ func Register(username, email, password string) bool {
 		"playerLocation": map[string]interface{}{"x": 0, "y": 0, "z": 0},
 	})
 	if err != nil {
-		fmt.Println("Error during register sequence")
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("Error during register sequence")
+		}
 		return false
 	}
 
-	fmt.Println("User registered successfully")
+	if gin.Mode() == gin.DebugMode {
+		fmt.Println("User registered successfully")
+	}
 	return true
 }
 
@@ -82,7 +98,9 @@ func Login(email, password string) (map[string]interface{}, error) {
 	userRef := client.Collection("accounts")
 	userSnapshot, err := userRef.Where("email", "==", email).Documents(ctx).GetAll()
 	if err != nil || len(userSnapshot) == 0 {
-		fmt.Println("user not found: ", err)
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("user not found: ", err)
+		}
 		return nil, errors.New("user not found: " + err.Error())
 	}
 
@@ -121,8 +139,10 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 	}
 
 	builds, ok := gameConfig["builds"].([]interface{})
-	if (!ok) {
-		fmt.Println("Invalid builds data:", gameConfig["builds"])
+	if !ok {
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("Invalid builds data:", gameConfig["builds"])
+		}
 		return nil, errors.New("invalid builds data")
 	}
 
@@ -131,7 +151,9 @@ func GetVersions(game, email string) (map[string]interface{}, error) {
 	for _, build := range builds {
 		buildMap, ok := build.(map[string]interface{})
 		if !ok {
-			fmt.Println("Invalid build map:", build)
+			if gin.Mode() == gin.DebugMode {
+				fmt.Println("Invalid build map:", build)
+			}
 			continue
 		}
 		if userWave <= buildMap["requiredWaveAccess"].(int) {
@@ -176,7 +198,9 @@ func FetchRemoteConfig() (map[string]interface{}, error) {
 		configJson[key] = defaultValue["value"]
 	}
 
-	fmt.Println("Fetched remote config:", configJson)
+	if gin.Mode() == gin.DebugMode {
+		fmt.Println("Fetched remote config:", configJson)
+	}
 	return configJson, nil
 }
 
@@ -385,7 +409,7 @@ func updateUserWantedStatus(email, status string) error {
 
 func CreateMessage(channel, email, message string) error {
 	ctx := context.Background()
-	if(gin.Mode() == gin.DebugMode){
+	if gin.Mode() == gin.DebugMode {
 		fmt.Println("Saving message for channel:", channel)
 	}
 	user, err := GetUserByEmail(email)
@@ -404,9 +428,11 @@ func CreateMessage(channel, email, message string) error {
 			"timestamp": time.Now(),
 		})
 	if err != nil {
-		fmt.Println("Error saving message:", err)
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("Error saving message:", err)
+		}
 	} else {
-		if(gin.Mode() == gin.DebugMode){
+		if gin.Mode() == gin.DebugMode {
 			fmt.Println("Message saved successfully: ", message)
 		}
 
@@ -452,12 +478,12 @@ func StartFirestoreListeners() {
 		for {
 			snap, err := accountsIter.Next()
 			if err != nil {
-				if(gin.Mode() == gin.DebugMode){
+				if gin.Mode() == gin.DebugMode {
 					fmt.Println("Error in accounts listener:", err)
 				}
 				return
 			}
-			if(gin.Mode() == gin.DebugMode){
+			if gin.Mode() == gin.DebugMode {
 				fmt.Println("Accounts changed:", snap.Changes)
 			}
 			// Broadcast these changes via SSE or WebSockets
@@ -470,13 +496,14 @@ func StartFirestoreListeners() {
 		for {
 			snap, err := motdIter.Next()
 			if err != nil {
-				fmt.Println("Error in MOTD listener:", err)
+				if gin.Mode() == gin.DebugMode {
+					fmt.Println("Error in MOTD listener:", err)
+				}
 				return
 			}
-			if(gin.Mode() == gin.DebugMode){
+			if gin.Mode() == gin.DebugMode {
 				fmt.Println("MOTD changed:", snap.Data())
 			}
-			// Broadcast changes here
 		}
 	}()
 
@@ -487,10 +514,12 @@ func StartFirestoreListeners() {
 		for {
 			snap, err := snapIter.Next()
 			if err != nil {
-				fmt.Println("Error in Firestore listener:", err)
+				if gin.Mode() == gin.DebugMode {
+					fmt.Println("Error in Firestore listener:", err)
+				}
 				return
 			}
-			if(gin.Mode() == gin.DebugMode){				
+			if gin.Mode() == gin.DebugMode {
 				fmt.Println("New messages snapshot:", snap.Changes)
 				fmt.Println("New messages snapshot:", snap.Changes)
 			}

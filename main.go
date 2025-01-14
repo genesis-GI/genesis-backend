@@ -14,8 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 )
-	
-	type RegisterRequest struct {
+
+type RegisterRequest struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -28,6 +28,7 @@ type LoginRequest struct {
 
 func main() {
 	gin.SetMode(gin.ReleaseMode)
+	//gin.SetMode(gin.DebugMode)
 	r := gin.Default()
 	r.Static("/public/css", "./public/css")
 
@@ -215,7 +216,10 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		fmt.Println("Trying login...")
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("Trying login...")
+		}
+
 		user, err := Login(req.Email, req.Password)
 		if err == nil {
 			c.SetCookie("email", req.Email, 3600, "/", "", false, true)
@@ -224,7 +228,9 @@ func main() {
 			c.SetCookie("password", req.Password, 3600, "/", "", false, true) // Store password for auto-login
 			c.Redirect(http.StatusFound, "/")
 		} else {
-			fmt.Println("Error during login sequence:", err)
+			if gin.Mode() == gin.DebugMode {
+				fmt.Println("Error during login sequence:", err)
+			}
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid credentials"})
 		}
 	})
@@ -408,7 +414,7 @@ func main() {
 		motd, err := GetMOTD(channel)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
-				return
+			return
 		}
 		if motd == nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "MOTD not found"})
@@ -633,6 +639,10 @@ func main() {
 		}
 		err = CreateMessage(channel, email, body.Message)
 		if err != nil {
+			if gin.Mode() == gin.DebugMode {
+				fmt.Println("Error saving message:", err)
+			}
+		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
 			return
 		}
@@ -690,10 +700,9 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": status})
 	})
 
-	r.POST("/spectrum/setUserWantedStatus/:email/:status", func(c *gin.Context){
+	r.POST("/spectrum/setUserWantedStatus/:email/:status", func(c *gin.Context) {
 		email := c.Param("email")
 		status := c.Param("status")
-
 
 		err := updateUserWantedStatus(email, status)
 		if err != nil {
@@ -705,7 +714,9 @@ func main() {
 
 	StartFirestoreListeners()
 
-	fmt.Println("Server is running on http://localhost:8088")
+	if gin.Mode() == gin.DebugMode {
+		fmt.Println("Server is running on http://localhost:8088")
+	}
 	r.Run(":8088")
 }
 
