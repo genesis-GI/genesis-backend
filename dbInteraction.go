@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/option"
 )
@@ -384,7 +385,9 @@ func updateUserWantedStatus(email, status string) error {
 
 func CreateMessage(channel, email, message string) error {
 	ctx := context.Background()
-	fmt.Println("Saving message for channel:", channel)
+	if(gin.Mode() == gin.DebugMode){
+		fmt.Println("Saving message for channel:", channel)
+	}
 	user, err := GetUserByEmail(email)
 	if err != nil {
 		return err
@@ -403,7 +406,10 @@ func CreateMessage(channel, email, message string) error {
 	if err != nil {
 		fmt.Println("Error saving message:", err)
 	} else {
-		fmt.Println("Message saved:", message)
+		if(gin.Mode() == gin.DebugMode){
+			fmt.Println("Message saved successfully: ", message)
+		}
+
 	}
 	return err
 }
@@ -446,10 +452,14 @@ func StartFirestoreListeners() {
 		for {
 			snap, err := accountsIter.Next()
 			if err != nil {
-				fmt.Println("Error in accounts listener:", err)
+				if(gin.Mode() == gin.DebugMode){
+					fmt.Println("Error in accounts listener:", err)
+				}
 				return
 			}
-			fmt.Println("Accounts changed:", snap.Changes)
+			if(gin.Mode() == gin.DebugMode){
+				fmt.Println("Accounts changed:", snap.Changes)
+			}
 			// Broadcast these changes via SSE or WebSockets
 		}
 	}()
@@ -463,7 +473,9 @@ func StartFirestoreListeners() {
 				fmt.Println("Error in MOTD listener:", err)
 				return
 			}
-			fmt.Println("MOTD changed:", snap.Data())
+			if(gin.Mode() == gin.DebugMode){
+				fmt.Println("MOTD changed:", snap.Data())
+			}
 			// Broadcast changes here
 		}
 	}()
@@ -478,9 +490,10 @@ func StartFirestoreListeners() {
 				fmt.Println("Error in Firestore listener:", err)
 				return
 			}
-			fmt.Println("New messages snapshot:", snap.Changes)
-			// Broadcast changes to your SSE or websockets here
-			fmt.Println("New messages snapshot:", snap.Changes)
+			if(gin.Mode() == gin.DebugMode){				
+				fmt.Println("New messages snapshot:", snap.Changes)
+				fmt.Println("New messages snapshot:", snap.Changes)
+			}
 		}
 	}()
 }

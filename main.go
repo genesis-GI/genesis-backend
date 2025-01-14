@@ -14,8 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 )
-
-type RegisterRequest struct {
+	
+	type RegisterRequest struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -603,7 +603,8 @@ func main() {
 		c.SetCookie("username", "", -1, "/", "", false, true)
 		c.SetCookie("admin", "", -1, "/", "", false, true)
 		c.SetCookie("password", "", -1, "/", "", false, true)
-		c.File("public/landing.html")
+		c.Redirect(http.StatusFound, "/")
+		//c.File("public/landing.html")
 	})
 
 	r.POST("/spectrum/messages/:channel", func(c *gin.Context) {
