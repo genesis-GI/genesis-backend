@@ -252,10 +252,6 @@ func GetUsers() (map[string][]string, error) {
 		username, _ := data["username"].(string)
 		isAdmin, _ := data["admin"].(bool)
 		status, _ := data["status"].(string)
-		wantedStatus, _ := data["wantedStatus"].(string)
-		if wantedStatus != "" {
-			status = wantedStatus
-		}
 		if isAdmin {
 			staff = append(staff, fmt.Sprintf("%s|%s", username, status))
 		} else {

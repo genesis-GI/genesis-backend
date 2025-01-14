@@ -222,8 +222,7 @@ func main() {
 			c.SetCookie("username", user["username"].(string), 3600, "/", "", false, true)
 			c.SetCookie("admin", fmt.Sprintf("%v", user["admin"]), 3600, "/", "", false, true)
 			c.SetCookie("password", req.Password, 3600, "/", "", false, true) // Store password for auto-login
-			c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
-			fmt.Println("User logged in successfully")
+			c.Redirect(http.StatusFound, "/")
 		} else {
 			fmt.Println("Error during login sequence:", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid credentials"})
@@ -409,7 +408,7 @@ func main() {
 		motd, err := GetMOTD(channel)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
-			return
+				return
 		}
 		if motd == nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "MOTD not found"})
