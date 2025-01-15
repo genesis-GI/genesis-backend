@@ -16,7 +16,9 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t cmb-${{ github.ref_name }}:latest .
+        BRANCH_NAME="${{ github.ref }}"
+        CONTAINER_NAME=$(echo $BRANCH_NAME | sed 's/refs\/heads\///' | tr '[:upper:]' '[:lower:]')
+        docker build -t cmb-$CONTAINER_NAME:latest .
 
     - name: Set outgoing port based on branch
       id: set_ports
