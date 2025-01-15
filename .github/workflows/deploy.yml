@@ -15,6 +15,37 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build Docker image
+      run: |
+        BRANCH_NAME="${GITHUB_REF##*/}"
+        CONTAINER_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]')
+        docker build -t cmb-$CONTAINER_NAME:latest .
+
+    - name: Save Docker image
+      run: |
+        BRANCH_NAME="${GITHUB_REF##*/}"
+        CONTAINER_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]')
+        docker save cmb-$CONTAINER_NAME:latest | bzip2 > cmb-$CONTAINER_NAME.tar.bz2
+
+    - name: Transfer Docker image to server
+      uses: appleboy/scp-action@v0.1.8
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SSH_USER }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        port: 2222
+        source: "cmb-${GITHUB_REF##*/}.tar.bz2"
+        target: "/home/${{ secrets.SSH_USER }}/cmb-${GITHUB_REF##*/}.tar.bz2"
+
     - name: Deploy to server
       uses: appleboy/ssh-action@v0.1.10
       with:
@@ -24,9 +55,9 @@ jobs:
         port: 2222
         script: |
           # Assign the GitHub ref to GITHUB_REF
-          GITHUB_REF="${{ github.ref }}"
+          GITHUB_REF="${GITHUB_REF}"
           echo "Deploying branch $GITHUB_REF"
-          
+
           # Ensure GITHUB_REF is set
           if [ -z "$GITHUB_REF" ]; then
             echo "GITHUB_REF is not set"
@@ -38,7 +69,7 @@ jobs:
           CONTAINER_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
           echo "Branch Name: $BRANCH_NAME"
           echo "Container Name: $CONTAINER_NAME"
-          
+
           # Set the port based on the branch
           case "$CONTAINER_NAME" in
             "production")
@@ -56,43 +87,43 @@ jobs:
               ;;
           esac
           echo "Using port: $OUTGOING_PORT"
-          
+
           # Navigate to the project directory
           cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
-          
+
           # Stop and remove any existing containers starting with 'cmb-'
           echo "Stopping and removing existing cmb-* containers if any"
           EXISTING_CONTAINERS=$(docker ps -a --filter "name=cmb-" --format "{{.Names}}")
           if [ -n "$EXISTING_CONTAINERS" ]; then
-            echo "$EXISTING_CONTAINERS" | xargs -n1 -I {} docker stop {} || true
-            echo "$EXISTING_CONTAINERS" | xargs -n1 -I {} docker rm {} || true
+            echo "$EXISTING_CONTAINERS" | xargs -I {} docker stop {} || true
+            echo "$EXISTING_CONTAINERS" | xargs -I {} docker rm {} || true
           else
             echo "No existing cmb-* containers found."
           fi
-          
-          # Copy the built image from the CI runner to the server
+
+          # Load the Docker image
           echo "Loading image into Docker"
-          docker save "cmb-$CONTAINER_NAME:latest" | bzip2 | sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} 'bunzip2 | docker load'
-          
+          bunzip2 < /home/${{ secrets.SSH_USER }}/cmb-$CONTAINER_NAME.tar.bz2 | docker load
+
           # Verify the image is loaded
           if ! docker images | grep -q "cmb-$CONTAINER_NAME"; then
             echo "Docker image cmb-$CONTAINER_NAME:latest not found after loading."
             exit 1
           fi
-          
+
           # Run the new container with the correct port and restart policy
           echo "Running new container: cmb-$CONTAINER_NAME"
           docker run -d --name "cmb-$CONTAINER_NAME" \
             --restart always \
             -p "$OUTGOING_PORT:$OUTGOING_PORT" \
             "cmb-$CONTAINER_NAME:latest"
-          
+
           # Verify the container is running
           if ! docker ps | grep -q "cmb-$CONTAINER_NAME"; then
             echo "Failed to start container cmb-$CONTAINER_NAME."
             exit 1
           fi
-          
+
           echo "Deployment of cmb-$CONTAINER_NAME completed successfully."
       env:
         GITHUB_REF: ${{ github.ref }}
