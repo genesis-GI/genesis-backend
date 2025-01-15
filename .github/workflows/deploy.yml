@@ -16,19 +16,19 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t cmb-${{ github.ref_name | toLowerCase }}:latest .
+        docker build -t cmb-${{ github.ref_name }}:latest .
 
     - name: Set outgoing port based on branch
       id: set_ports
       run: |
-        if [[ "${{ github.ref_name }}" == "Production" ]]; then
+        if [[ "${{ github.ref }}" == "refs/heads/Production" ]]; then
           echo "OUTGOING_PORT=8088" >> $GITHUB_ENV
-        elif [[ "${{ github.ref_name }}" == "Dev" ]]; then
+        elif [[ "${{ github.ref }}" == "refs/heads/Dev" ]]; then
           echo "OUTGOING_PORT=8086" >> $GITHUB_ENV
-        elif [[ "${{ github.ref_name }}" == "QA" ]]; then
+        elif [[ "${{ github.ref }}" == "refs/heads/QA" ]]; then
           echo "OUTGOING_PORT=8087" >> $GITHUB_ENV
         fi
-        echo "Selected outgoing port for ${{ github.ref_name }}: $OUTGOING_PORT"
+        echo "Selected outgoing port for ${{ github.ref }}: $OUTGOING_PORT"
 
     - name: Deploy to self-hosted server
       uses: appleboy/ssh-action@v0.1.10
@@ -38,20 +38,23 @@ jobs:
         password: ${{ secrets.SSH_PASSWORD }}
         port: 2222
         script: |
-          echo "Deploying branch ${{ github.ref_name }}"
+          echo "Deploying branch ${{ github.ref }}"
 
           # Navigate to the correct directory where the project is located
           cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
 
-          # Stop and remove old container (using lowercase for container name)
-          docker stop cmb-${{ github.ref_name | toLowerCase }}:latest || true
-          docker rm cmb-${{ github.ref_name | toLowerCase }}:latest || true
+          # Stop and remove old container (convert to lowercase manually)
+          BRANCH_NAME="${{ github.ref }}" 
+          CONTAINER_NAME=$(echo $BRANCH_NAME | sed 's/refs\/heads\///' | tr '[:upper:]' '[:lower:]')
+
+          docker stop cmb-$CONTAINER_NAME:latest || true
+          docker rm cmb-$CONTAINER_NAME:latest || true
 
           # Copy the built image from the CI runner to the server
-          docker save cmb-${{ github.ref_name | toLowerCase }}:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@$SERVER_IP 'docker load < bzcat > /tmp/cmb-${{ github.ref_name | toLowerCase }}.tar.bz2'
+          docker save cmb-$CONTAINER_NAME:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@$SERVER_IP 'docker load < bzcat > /tmp/cmb-$CONTAINER_NAME.tar.bz2'
 
           # Run the new container with the correct port and restart policy
-          docker run -d --name cmb-${{ github.ref_name | toLowerCase }}:latest \
+          docker run -d --name cmb-$CONTAINER_NAME:latest \
             --restart always \
             -p $OUTGOING_PORT:$OUTGOING_PORT \
-            cmb-${{ github.ref_name | toLowerCase }}:latest
+            cmb-$CONTAINER_NAME:latest
