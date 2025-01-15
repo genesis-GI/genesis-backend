@@ -33,6 +33,10 @@ jobs:
           echo "Building Docker image for branch ${{ steps.branch_name.outputs.branch_name }}"
           docker build -t cmb-${{ steps.branch_name.outputs.branch_name }}:latest .
 
+      - name: Install sshpass on server
+        run: |
+          sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@81.10.229.31 'sudo apt-get install -y sshpass'
+
       - name: Connect and Deploy
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -46,9 +50,11 @@ jobs:
             # Navigate to the correct directory where the project is located
             cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
 
-            # Stop the old container
-            docker stop cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
-            docker rm cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
+            # Check if the container exists before stopping and removing
+            docker ps -a | grep cmb-${{ steps.branch_name.outputs.branch_name }}:latest && \
+              docker stop cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
+            docker ps -a | grep cmb-${{ steps.branch_name.outputs.branch_name }}:latest && \
+              docker rm cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
 
             # Copy the built image from the CI runner to the server
             docker save cmb-${{ steps.branch_name.outputs.branch_name }}:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@81.10.229.31 'docker load < bzcat > /tmp/cmb-${{ steps.branch_name.outputs.branch_name }}.tar.bz2'
