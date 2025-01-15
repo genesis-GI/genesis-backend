@@ -60,14 +60,25 @@ jobs:
           # Navigate to the project directory
           cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
           
-          # Stop and remove the old container
-          echo "Stopping and removing container: cmb-$CONTAINER_NAME"
-          docker stop "cmb-$CONTAINER_NAME" || true
-          docker rm "cmb-$CONTAINER_NAME" || true
+          # Stop and remove any existing containers starting with 'cmb-'
+          echo "Stopping and removing existing cmb-* containers if any"
+          EXISTING_CONTAINERS=$(docker ps -a --filter "name=cmb-" --format "{{.Names}}")
+          if [ -n "$EXISTING_CONTAINERS" ]; then
+            echo "$EXISTING_CONTAINERS" | xargs -n1 -I {} docker stop {} || true
+            echo "$EXISTING_CONTAINERS" | xargs -n1 -I {} docker rm {} || true
+          else
+            echo "No existing cmb-* containers found."
+          fi
           
           # Copy the built image from the CI runner to the server
           echo "Loading image into Docker"
-          docker save "cmb-$CONTAINER_NAME:latest" | bzip2 | sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} 'bzcat | docker load'
+          docker save "cmb-$CONTAINER_NAME:latest" | bzip2 | sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} 'bunzip2 | docker load'
+          
+          # Verify the image is loaded
+          if ! docker images | grep -q "cmb-$CONTAINER_NAME"; then
+            echo "Docker image cmb-$CONTAINER_NAME:latest not found after loading."
+            exit 1
+          fi
           
           # Run the new container with the correct port and restart policy
           echo "Running new container: cmb-$CONTAINER_NAME"
@@ -75,3 +86,13 @@ jobs:
             --restart always \
             -p "$OUTGOING_PORT:$OUTGOING_PORT" \
             "cmb-$CONTAINER_NAME:latest"
+          
+          # Verify the container is running
+          if ! docker ps | grep -q "cmb-$CONTAINER_NAME"; then
+            echo "Failed to start container cmb-$CONTAINER_NAME."
+            exit 1
+          fi
+          
+          echo "Deployment of cmb-$CONTAINER_NAME completed successfully."
+      env:
+        GITHUB_REF: ${{ github.ref }}
