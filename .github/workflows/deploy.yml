@@ -18,6 +18,18 @@ jobs:
       run: |
         docker build -t cmb-${{ github.ref_name | toLowerCase }}:latest .
 
+    - name: Set outgoing port based on branch
+      id: set_ports
+      run: |
+        if [[ "${{ github.ref_name }}" == "Production" ]]; then
+          echo "OUTGOING_PORT=8088" >> $GITHUB_ENV
+        elif [[ "${{ github.ref_name }}" == "Dev" ]]; then
+          echo "OUTGOING_PORT=8086" >> $GITHUB_ENV
+        elif [[ "${{ github.ref_name }}" == "QA" ]]; then
+          echo "OUTGOING_PORT=8087" >> $GITHUB_ENV
+        fi
+        echo "Selected outgoing port for ${{ github.ref_name }}: $OUTGOING_PORT"
+
     - name: Deploy to self-hosted server
       uses: appleboy/ssh-action@v0.1.10
       with:
@@ -38,8 +50,8 @@ jobs:
           # Copy the built image from the CI runner to the server
           docker save cmb-${{ github.ref_name | toLowerCase }}:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@$SERVER_IP 'docker load < bzcat > /tmp/cmb-${{ github.ref_name | toLowerCase }}.tar.bz2'
 
-          # Run the new container with restart policy and expose port 8088
+          # Run the new container with the correct port and restart policy
           docker run -d --name cmb-${{ github.ref_name | toLowerCase }}:latest \
             --restart always \
-            -p 8088:8088 \
+            -p $OUTGOING_PORT:$OUTGOING_PORT \
             cmb-${{ github.ref_name | toLowerCase }}:latest
