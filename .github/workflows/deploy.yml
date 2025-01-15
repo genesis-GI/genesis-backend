@@ -3,9 +3,9 @@ name: Deploy to Self-Hosted Server
 on:
   push:
     branches:
-      - production
-      - dev
-      - qa
+      - Production
+      - Dev
+      - QA
 
 jobs:
   deploy:
@@ -17,17 +17,18 @@ jobs:
     - name: Build Docker image
       run: |
         BRANCH_NAME="${{ github.ref }}"
+        # Convert branch name to lowercase for the container name
         CONTAINER_NAME=$(echo $BRANCH_NAME | sed 's/refs\/heads\///' | tr '[:upper:]' '[:lower:]')
         docker build -t cmb-$CONTAINER_NAME:latest .
 
     - name: Set outgoing port based on branch
       id: set_ports
       run: |
-        if [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
+        if [[ "${{ github.ref }}" == "refs/heads/Production" ]]; then
           echo "OUTGOING_PORT=8088" >> $GITHUB_ENV
-        elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+        elif [[ "${{ github.ref }}" == "refs/heads/Dev" ]]; then
           echo "OUTGOING_PORT=8086" >> $GITHUB_ENV
-        elif [[ "${{ github.ref }}" == "refs/heads/qa" ]]; then
+        elif [[ "${{ github.ref }}" == "refs/heads/QA" ]]; then
           echo "OUTGOING_PORT=8087" >> $GITHUB_ENV
         fi
         echo "Selected outgoing port for ${{ github.ref }}: $OUTGOING_PORT"
@@ -45,7 +46,7 @@ jobs:
           # Navigate to the correct directory where the project is located
           cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
 
-          # Stop and remove old container
+          # Stop and remove old container (convert to lowercase for Docker commands)
           BRANCH_NAME="${{ github.ref }}" 
           CONTAINER_NAME=$(echo $BRANCH_NAME | sed 's/refs\/heads\///' | tr '[:upper:]' '[:lower:]')
 
