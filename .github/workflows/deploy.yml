@@ -23,6 +23,8 @@ jobs:
         password: ${{ secrets.SSH_PASSWORD }}
         port: 2222
         script: |
+          # Assign the GitHub ref to GITHUB_REF
+          GITHUB_REF="${{ github.ref }}"
           echo "Deploying branch $GITHUB_REF"
           
           # Ensure GITHUB_REF is set
@@ -33,7 +35,7 @@ jobs:
 
           # Extract the branch name from GITHUB_REF and convert it to lowercase
           BRANCH_NAME="${GITHUB_REF##*/}"  # Extract the branch name from refs/heads/branch-name
-          CONTAINER_NAME=$(echo $BRANCH_NAME | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+          CONTAINER_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
           echo "Branch Name: $BRANCH_NAME"
           echo "Container Name: $CONTAINER_NAME"
           
@@ -60,19 +62,16 @@ jobs:
           
           # Stop and remove the old container
           echo "Stopping and removing container: cmb-$CONTAINER_NAME"
-          docker stop cmb-$CONTAINER_NAME || true
-          docker rm cmb-$CONTAINER_NAME || true
+          docker stop "cmb-$CONTAINER_NAME" || true
+          docker rm "cmb-$CONTAINER_NAME" || true
           
           # Copy the built image from the CI runner to the server
           echo "Loading image into Docker"
-          docker save cmb-$CONTAINER_NAME:latest | bzip2 | sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} 'bzcat | docker load'
+          docker save "cmb-$CONTAINER_NAME:latest" | bzip2 | sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} 'bzcat | docker load'
           
           # Run the new container with the correct port and restart policy
           echo "Running new container: cmb-$CONTAINER_NAME"
-          docker run -d --name cmb-$CONTAINER_NAME \
+          docker run -d --name "cmb-$CONTAINER_NAME" \
             --restart always \
-            -p $OUTGOING_PORT:$OUTGOING_PORT \
-            cmb-$CONTAINER_NAME:latest
-
-    env:
-      GITHUB_REF: ${{ github.ref }}
+            -p "$OUTGOING_PORT:$OUTGOING_PORT" \
+            "cmb-$CONTAINER_NAME:latest"
