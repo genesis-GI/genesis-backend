@@ -39,7 +39,7 @@ jobs:
           host: 81.10.229.31
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
-          port: 22
+          port: 2222
           script: |
             echo "Deploying branch ${{ steps.branch_name.outputs.branch_name }}"
 
