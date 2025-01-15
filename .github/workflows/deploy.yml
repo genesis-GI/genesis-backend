@@ -31,7 +31,7 @@ jobs:
           # Navigate to the correct directory where the project is located
           cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
 
-          # Stop and remove old container
+          # Stop and remove old container (using lowercase for container name)
           docker stop cmb-${{ github.ref_name | toLowerCase }}:latest || true
           docker rm cmb-${{ github.ref_name | toLowerCase }}:latest || true
 
