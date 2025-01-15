@@ -15,6 +15,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
     - name: Build Docker image
       run: |
         BRANCH_NAME="${GITHUB_REF##*/}"
@@ -26,6 +29,7 @@ jobs:
         BRANCH_NAME="${GITHUB_REF##*/}"
         CONTAINER_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]')
         docker save cmb-$CONTAINER_NAME:latest | bzip2 > cmb-$CONTAINER_NAME.tar.bz2
+        ls -l cmb-$CONTAINER_NAME.tar.bz2  # Verify the file exists
 
     - name: Transfer Docker image to server
       uses: appleboy/scp-action@v0.1.3
