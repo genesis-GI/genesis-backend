@@ -6,15 +6,11 @@ on:
       - QA
       - Dev
       - Production
-  pull_request:
-    types:
-      - closed
 
 jobs:
   deploy:
     name: Deploy to Self-Hosted Server
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && startsWith(github.ref, 'refs/heads/') # Only run if PR is merged
 
     steps:
       - name: Checkout Code
