@@ -1,0 +1,60 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - QA
+      - Dev
+      - Production
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  deploy:
+    name: Deploy to Self-Hosted Server
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true # Only run on merged PRs
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Get Branch Name and Convert to Lowercase
+        id: branch_name
+        run: |
+          BRANCH_NAME=${{ github.ref_name }}
+          # Convert branch name to lowercase
+          BRANCH_NAME_LOWER=$(echo $BRANCH_NAME | tr '[:upper:]' '[:lower:]')
+          echo "Branch name in lowercase: $BRANCH_NAME_LOWER"
+          echo "::set-output name=branch_name::$BRANCH_NAME_LOWER"
+
+      - name: Build Docker Image
+        run: |
+          echo "Building Docker image for branch ${{ steps.branch_name.outputs.branch_name }}"
+          docker build -t cmb-${{ steps.branch_name.outputs.branch_name }}:latest .
+
+      - name: Connect and Deploy
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            echo "Deploying branch ${{ steps.branch_name.outputs.branch_name }}"
+            
+            # Stop the old container
+            docker stop cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
+            docker rm cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
+            
+            # Copy the built image from the CI runner to the server
+            docker save cmb-${{ steps.branch_name.outputs.branch_name }}:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'docker load < bzcat > /tmp/cmb-${{ steps.branch_name.outputs.branch_name }}.tar.bz2'
+            
+            # Run the new container with restart policy and expose port 8088
+            docker run -d --name cmb-${{ steps.branch_name.outputs.branch_name }}:latest \
+              --restart always \
+              -p 8088:8088 \
+              cmb-${{ steps.branch_name.outputs.branch_name }}:latest
