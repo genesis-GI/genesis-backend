@@ -1,66 +1,45 @@
-name: Deploy to Server
+name: Deploy to Self-Hosted Server
 
 on:
   push:
     branches:
-      - QA
-      - Dev
       - Production
+      - Dev
+      - QA
 
 jobs:
   deploy:
-    name: Deploy to Self-Hosted Server
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+    - name: Build Docker image
+      run: |
+        docker build -t cmb-${{ github.ref_name | toLowerCase }}:latest .
 
-      - name: Get Branch Name and Convert to Lowercase
-        id: branch_name
-        run: |
-          BRANCH_NAME=${{ github.ref_name }}
-          # Convert branch name to lowercase
-          BRANCH_NAME_LOWER=$(echo $BRANCH_NAME | tr '[:upper:]' '[:lower:]')
-          echo "Branch name in lowercase: $BRANCH_NAME_LOWER"
-          echo "::set-output name=branch_name::$BRANCH_NAME_LOWER"
+    - name: Deploy to self-hosted server
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SSH_USER }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        port: 2222
+        script: |
+          echo "Deploying branch ${{ github.ref_name }}"
 
-      - name: Build Docker Image
-        run: |
-          echo "Building Docker image for branch ${{ steps.branch_name.outputs.branch_name }}"
-          docker build -t cmb-${{ steps.branch_name.outputs.branch_name }}:latest .
+          # Navigate to the correct directory where the project is located
+          cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
 
-      - name: Install sshpass on server
-        run: |
-          sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@81.10.229.31 'sudo apt-get install -y sshpass'
+          # Stop and remove old container
+          docker stop cmb-${{ github.ref_name | toLowerCase }}:latest || true
+          docker rm cmb-${{ github.ref_name | toLowerCase }}:latest || true
 
-      - name: Connect and Deploy
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: 81.10.229.31
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 2222
-          script: |
-            echo "Deploying branch ${{ steps.branch_name.outputs.branch_name }}"
+          # Copy the built image from the CI runner to the server
+          docker save cmb-${{ github.ref_name | toLowerCase }}:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@$SERVER_IP 'docker load < bzcat > /tmp/cmb-${{ github.ref_name | toLowerCase }}.tar.bz2'
 
-            # Navigate to the correct directory where the project is located
-            cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
-
-            # Check if the container exists before stopping and removing
-            docker ps -a | grep cmb-${{ steps.branch_name.outputs.branch_name }}:latest && \
-              docker stop cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
-            docker ps -a | grep cmb-${{ steps.branch_name.outputs.branch_name }}:latest && \
-              docker rm cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
-
-            # Copy the built image from the CI runner to the server
-            docker save cmb-${{ steps.branch_name.outputs.branch_name }}:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@81.10.229.31 'docker load < bzcat > /tmp/cmb-${{ steps.branch_name.outputs.branch_name }}.tar.bz2'
-            
-            # Run the new container with restart policy and expose port 8088
-            docker run -d --name cmb-${{ steps.branch_name.outputs.branch_name }}:latest \
-              --restart always \
-              -p 8088:8088 \
-              cmb-${{ steps.branch_name.outputs.branch_name }}:latest
+          # Run the new container with restart policy and expose port 8088
+          docker run -d --name cmb-${{ github.ref_name | toLowerCase }}:latest \
+            --restart always \
+            -p 8088:8088 \
+            cmb-${{ github.ref_name | toLowerCase }}:latest
