@@ -16,13 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Set up SSH for deployment
-      - name: Set up SSH key
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      # Deploy to the server
+      # Deploy to the server using SSH password authentication
       - name: Deploy to server
         uses: appleboy/ssh-action@v0.1.10
         with:
