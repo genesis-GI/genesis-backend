@@ -36,18 +36,22 @@ jobs:
       - name: Connect and Deploy
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.SSH_HOST }}
+          host: 81.10.229.31
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
           script: |
             echo "Deploying branch ${{ steps.branch_name.outputs.branch_name }}"
-            
+
+            # Navigate to the correct directory where the project is located
+            cd /home/${{ secrets.SSH_USER }}/genesis-backend || exit 1
+
             # Stop the old container
             docker stop cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
             docker rm cmb-${{ steps.branch_name.outputs.branch_name }}:latest || true
-            
+
             # Copy the built image from the CI runner to the server
-            docker save cmb-${{ steps.branch_name.outputs.branch_name }}:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'docker load < bzcat > /tmp/cmb-${{ steps.branch_name.outputs.branch_name }}.tar.bz2'
+            docker save cmb-${{ steps.branch_name.outputs.branch_name }}:latest | bzip2 | sshpass -p ${{ secrets.SSH_PASSWORD }} ssh ${{ secrets.SSH_USER }}@81.10.229.31 'docker load < bzcat > /tmp/cmb-${{ steps.branch_name.outputs.branch_name }}.tar.bz2'
             
             # Run the new container with restart policy and expose port 8088
             docker run -d --name cmb-${{ steps.branch_name.outputs.branch_name }}:latest \
