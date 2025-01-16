@@ -2,7 +2,10 @@ FROM golang:latest
 
 WORKDIR /app
 
-COPY . . 
+COPY . .
+
+# Copy fireBaseInfo.json into the Docker image
+COPY fireBaseInfo.json /app/
 
 RUN go mod download
 
