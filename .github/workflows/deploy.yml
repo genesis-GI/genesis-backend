@@ -18,11 +18,12 @@ jobs:
     - name: Set up SSH for deployment
       uses: appleboy/ssh-action@v0.1.10
       with:
-        host: ${{ secrets.SERVER_IP }}
+        host: "81.10.229.31"
         username: ${{ secrets.SSH_USER }}
         password: ${{ secrets.SSH_PASSWORD }}
         port: 2222
         script: |
+          SERVER_IP="81.10.229.31"
           echo "Deploying branch $GITHUB_REF"
           
           # Hardcode branch name as 'Dev' for testing
@@ -84,9 +85,3 @@ jobs:
             -p $OUTGOING_PORT:8088 \
             cmb-$CONTAINER_NAME:latest
 
-    - name: Check SERVER_IP
-      run: |
-        if [ -z "$SERVER_IP" ]; then
-          echo "Error: SERVER_IP not defined"
-          exit 1
-        fi
