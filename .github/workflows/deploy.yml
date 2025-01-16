@@ -83,3 +83,10 @@ jobs:
             --restart always \
             -p $OUTGOING_PORT:8088 \
             cmb-$CONTAINER_NAME:latest
+
+    - name: Check SERVER_IP
+      run: |
+        if [ -z "$SERVER_IP" ]; then
+          echo "Error: SERVER_IP not defined"
+          exit 1
+        fi
