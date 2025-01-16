@@ -27,7 +27,9 @@ jobs:
         echo "::set-output name=container_name::$CONTAINER_NAME"
 
     - name: Build Docker image
-      run: docker build -t cmb-${{ steps.vars.outputs.container_name }} .
+      run: |
+        cp fireBaseInfo.json .  # Ensure fireBaseInfo.json is in the build context
+        docker build -t cmb-${{ steps.vars.outputs.container_name }} .
 
     - name: Remove fireBaseInfo.json
       run: rm fireBaseInfo.json
