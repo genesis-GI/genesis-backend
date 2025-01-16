@@ -15,6 +15,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    - name: Create fireBaseInfo.json from secret
+      run: echo "${{ secrets.FIREBASE_INFO }}" > fireBaseInfo.json
+
     - name: Set up branch name and container name
       id: vars
       run: |
@@ -100,3 +103,10 @@ jobs:
             --restart always \
             -p $OUTGOING_PORT:8088 \
             cmb-$CONTAINER_NAME:latest
+
+          # Add debugging steps to check container logs and status
+          echo "Checking container logs"
+          docker logs cmb-$CONTAINER_NAME
+
+          echo "Checking container status"
+          docker ps -a
