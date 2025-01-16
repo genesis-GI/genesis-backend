@@ -33,7 +33,7 @@ jobs:
           
           echo "PORT=$PORT" >> $GITHUB_ENV
           echo "CONTAINER_NAME=cmb-$BRANCH_NAME_LOWER" >> $GITHUB_ENV
-          echo "IMAGE_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+          echo "IMAGE_NAME=cmb-$BRANCH_NAME_LOWER" >> $GITHUB_ENV
 
       - name: Build Docker image
         run: |
