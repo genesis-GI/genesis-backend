@@ -20,6 +20,7 @@ jobs:
       run: |
         BRANCH_NAME="${GITHUB_REF##*/}"
         CONTAINER_NAME=$(echo $BRANCH_NAME | tr '[:upper:]' '[:lower:]')
+        echo "::set-output name=branch_name::$BRANCH_NAME"
         echo "::set-output name=container_name::$CONTAINER_NAME"
 
     - name: Build Docker image
@@ -47,10 +48,10 @@ jobs:
         port: 2222
         script: |
           SERVER_IP="81.10.229.31"
-          echo "Deploying branch $GITHUB_REF"
+          echo "Deploying branch ${{ steps.vars.outputs.branch_name }}"
           
           # Extract branch name
-          BRANCH_NAME="${GITHUB_REF##*/}"
+          BRANCH_NAME="${{ steps.vars.outputs.branch_name }}"
           echo "Branch Name: $BRANCH_NAME"  # Debugging output
 
           # Ensure the branch name is not empty
