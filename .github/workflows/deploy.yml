@@ -1,4 +1,4 @@
-name: Deploy Project
+name: deploy
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v2
 
     - name: Set up SSH for deployment
@@ -26,9 +26,9 @@ jobs:
           SERVER_IP="81.10.229.31"
           echo "Deploying branch $GITHUB_REF"
           
-          # Hardcode branch name as 'Dev' for testing
-          BRANCH_NAME="Dev"  
-          echo "Hardcoded Branch Name: $BRANCH_NAME"  # Debugging output
+          # Extract branch name
+          BRANCH_NAME=$(echo $GITHUB_REF | awk -F'/' '{print $3}')
+          echo "Branch Name: $BRANCH_NAME"  # Debugging output
 
           # Ensure the branch name is not empty
           if [ -z "$BRANCH_NAME" ]; then
@@ -56,6 +56,10 @@ jobs:
               ;;
           esac
           echo "Using port: $OUTGOING_PORT"
+          
+          # Debugging output for SERVER_IP and OUTGOING_PORT
+          echo "SERVER_IP: $SERVER_IP"
+          echo "OUTGOING_PORT: $OUTGOING_PORT"
 
           # Navigate to the project directory
           cd /home/***/genesis-backend || exit 1
@@ -76,7 +80,7 @@ jobs:
 
           # Copy the built image from the CI runner to the server
           echo "Loading image into Docker"
-          docker save cmb-$CONTAINER_NAME:latest | bzip2 | sshpass -p "***" ssh -o StrictHostKeyChecking=no -p 2222 ***@$SERVER_IP 'bzcat | docker load'
+          docker save cmb-$CONTAINER_NAME:latest | bzip2 | sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p 2222 ${{ secrets.SSH_USER }}@$SERVER_IP 'bzcat | docker load'
 
           # Run the new container with the correct port and restart policy
           echo "Running new container: cmb-$CONTAINER_NAME"
@@ -85,3 +89,18 @@ jobs:
             -p $OUTGOING_PORT:8088 \
             cmb-$CONTAINER_NAME:latest
 
+          # Check container status
+          echo "Checking container status"
+          docker ps -a --filter "name=cmb-$CONTAINER_NAME"
+
+          # Check container logs
+          echo "Checking container logs"
+          docker logs cmb-$CONTAINER_NAME
+
+          # Verify application is listening on port 8088
+          echo "Verifying application is listening on port 8088"
+          docker exec cmb-$CONTAINER_NAME netstat -tuln | grep 8088
+
+          # Test the application endpoint from within the container
+          echo "Testing application endpoint from within the container"
+          docker exec cmb-$CONTAINER_NAME curl -v http://127.0.0.1:8088
