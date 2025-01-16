@@ -15,10 +15,26 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    - name: Build Docker image
+      run: docker build -t cmb-${{ github.ref_name }} .
+
+    - name: Save Docker image to file
+      run: docker save cmb-${{ github.ref_name }} | bzip2 > cmb-${{ github.ref_name }}.tar.bz2
+
+    - name: Transfer Docker image to server
+      uses: appleboy/scp-action@v0.1.0
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SSH_USER }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        port: 2222
+        source: cmb-${{ github.ref_name }}.tar.bz2
+        target: /home/***/genesis-backend/
+
     - name: Set up SSH for deployment
       uses: appleboy/ssh-action@v0.1.10
       with:
-        host: "81.10.229.31"
+        host: ${{ secrets.SERVER_IP }}
         username: ${{ secrets.SSH_USER }}
         password: ${{ secrets.SSH_PASSWORD }}
         port: 2222
@@ -26,9 +42,9 @@ jobs:
           SERVER_IP="81.10.229.31"
           echo "Deploying branch $GITHUB_REF"
           
-          # Hardcode branch name as 'Dev' for testing
-          BRANCH_NAME="Dev"  
-          echo "Hardcoded Branch Name: $BRANCH_NAME"  # Debugging output
+          # Extract branch name
+          BRANCH_NAME="${GITHUB_REF##*/}"
+          echo "Branch Name: $BRANCH_NAME"  # Debugging output
 
           # Ensure the branch name is not empty
           if [ -z "$BRANCH_NAME" ]; then
@@ -60,23 +76,15 @@ jobs:
           # Navigate to the project directory
           cd /home/***/genesis-backend || exit 1
 
-          # Check if the container already exists
-          if [[ $(docker ps -a --filter "name=cmb-$CONTAINER_NAME" -q) ]]; then
-            echo "Container cmb-$CONTAINER_NAME already exists. Skipping removal."
-          else
-            # If the container does not exist, build the image
-            echo "Container cmb-$CONTAINER_NAME does not exist. Building image."
-            docker build -t cmb-$CONTAINER_NAME .
-          fi
-
           # Stop and remove the old container if it exists
           echo "Stopping and removing container: cmb-$CONTAINER_NAME"
           docker stop cmb-$CONTAINER_NAME || true
           docker rm cmb-$CONTAINER_NAME || true
 
-          # Copy the built image from the CI runner to the server
+          # Load the built image into Docker
           echo "Loading image into Docker"
-          docker save cmb-$CONTAINER_NAME:latest | bzip2 | sshpass -p "***" ssh -o StrictHostKeyChecking=no -p 2222 ***@$SERVER_IP 'bzcat | docker load'
+          bzip2 -d cmb-${{ github.ref_name }}.tar.bz2
+          docker load < cmb-${{ github.ref_name }}.tar
 
           # Run the new container with the correct port and restart policy
           echo "Running new container: cmb-$CONTAINER_NAME"
