@@ -25,9 +25,9 @@ jobs:
         script: |
           echo "Deploying branch $GITHUB_REF"
 
-          # Extract the branch name from GITHUB_REF and convert it to lowercase
+          # Extract the branch name from GITHUB_REF and convert it to lowercase for the container name
           BRANCH_NAME="${GITHUB_REF##*/}"  # Extract the branch name from refs/heads/branch-name
-          CONTAINER_NAME=$(echo $BRANCH_NAME | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+          CONTAINER_NAME=$(echo $BRANCH_NAME | tr '[:upper:]' '[:lower:]')  # Convert branch name to lowercase for the container name
           echo "Branch Name: $BRANCH_NAME"
           echo "Container Name: $CONTAINER_NAME"
 
