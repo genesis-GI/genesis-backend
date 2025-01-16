@@ -35,11 +35,11 @@ jobs:
           echo "CONTAINER_NAME=cmb-$BRANCH_NAME_LOWER" >> $GITHUB_ENV
           echo "IMAGE_NAME=cmb-$BRANCH_NAME_LOWER" >> $GITHUB_ENV
 
-      - name: Build Docker image
+      - name: Copy files to the server
         run: |
-          docker build -t $IMAGE_NAME .
+          rsync -avz --exclude '.git' --exclude 'node_modules' --exclude 'build' ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/deploy
 
       - name: Deploy to server
         run: |
           sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p 2222 ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
-          "docker stop $CONTAINER_NAME || true && docker rm $CONTAINER_NAME || true && docker run -d --name $CONTAINER_NAME -p $PORT:80 $IMAGE_NAME"
+          "cd /tmp/deploy && docker stop $CONTAINER_NAME || true && docker rm $CONTAINER_NAME || true && docker build -t $IMAGE_NAME . && docker run -d --name $CONTAINER_NAME -p $PORT:80 $IMAGE_NAME"
