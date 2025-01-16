@@ -100,3 +100,7 @@ jobs:
           # Verify application is listening on port 8088
           echo "Verifying application is listening on port 8088"
           docker exec cmb-$CONTAINER_NAME netstat -tuln | grep 8088
+
+          # Test the application endpoint from within the container
+          echo "Testing application endpoint from within the container"
+          docker exec cmb-$CONTAINER_NAME curl -v http://127.0.0.1:8088
