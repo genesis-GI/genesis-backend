@@ -101,13 +101,16 @@ func Login(email, password string) (map[string]interface{}, error) {
 		if gin.Mode() == gin.DebugMode {
 			fmt.Println("user not found: ", err)
 		}
-		return nil, errors.New("user not found: " + err.Error())
+		return nil, errors.New("user not found")
 	}
 
 	user := userSnapshot[0].Data()
 	hashedPassword := user["password"].(string)
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
+		if gin.Mode() == gin.DebugMode {
+			fmt.Println("invalid password: ", err)
+		}
 		return nil, errors.New("invalid password")
 	}
 	return user, nil

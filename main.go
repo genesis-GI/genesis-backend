@@ -90,7 +90,8 @@ func main() {
 	})
 
 	r.GET("/spectrum", func(c *gin.Context) {
-		email, err := c.Cookie("email")
+		c.String(http.StatusTemporaryRedirect, "Spectrum is currently not available")
+/* 		email, err := c.Cookie("email")
 		if err != nil {
 			c.String(http.StatusOK, "Access forbidden: You must be logged in")
 			return
@@ -106,7 +107,7 @@ func main() {
 			c.File("public/spectrum.html")
 		} else {
 			c.String(http.StatusOK, "Access forbidden: You must be logged in")
-		}
+		} */
 	})
 
 	r.GET("/spectrum/channels", func(c *gin.Context) {
