@@ -15,9 +15,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Create fireBaseInfo.json from secret
-      run: echo "${{ secrets.FIREBASE_INFO }}" > fireBaseInfo.json
-
     - name: Set up branch name and container name
       id: vars
       run: |
@@ -28,9 +25,6 @@ jobs:
 
     - name: Build Docker image
       run: docker build -t cmb-${{ steps.vars.outputs.container_name }} .
-
-    - name: Remove fireBaseInfo.json
-      run: rm fireBaseInfo.json
 
     - name: Save Docker image to file
       run: docker save cmb-${{ steps.vars.outputs.container_name }} | bzip2 > cmb-${{ steps.vars.outputs.container_name }}.tar.bz2
