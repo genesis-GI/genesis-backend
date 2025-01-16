@@ -15,8 +15,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install sshpass
-        run: sudo apt-get update && sudo apt-get install -y sshpass
+      - name: Install sshpass and rsync
+        run: sudo apt-get update && sudo apt-get install -y sshpass rsync
 
       - name: Set branch-specific settings
         id: settings
@@ -37,7 +37,7 @@ jobs:
 
       - name: Copy files to the server
         run: |
-          rsync -avz --exclude '.git' --exclude 'node_modules' --exclude 'build' ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/deploy
+          rsync -avz -e "ssh -p 2222" --exclude '.git' --exclude 'node_modules' --exclude 'build' ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/deploy
 
       - name: Deploy to server
         run: |
