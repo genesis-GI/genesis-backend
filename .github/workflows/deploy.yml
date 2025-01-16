@@ -56,6 +56,10 @@ jobs:
           esac
           echo "Using port: $OUTGOING_PORT"
 
+          # Debugging output for SERVER_IP and OUTGOING_PORT
+          echo "SERVER_IP: $SERVER_IP"
+          echo "OUTGOING_PORT: $OUTGOING_PORT"
+
           # Navigate to the project directory
           cd /home/***/genesis-backend || exit 1
 
