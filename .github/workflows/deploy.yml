@@ -30,16 +30,17 @@ jobs:
         CONTAINER_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]')
         docker save cmb-$CONTAINER_NAME:latest | bzip2 > cmb-$CONTAINER_NAME.tar.bz2
         ls -l cmb-$CONTAINER_NAME.tar.bz2  # Verify the file exists
-
+        
     - name: Transfer Docker image to server
-      uses: appleboy/scp-action@v0.1.3
-      with:
-        host: ${{ secrets.SERVER_IP }}
-        username: ${{ secrets.SSH_USER }}
-        password: ${{ secrets.SSH_PASSWORD }}
-        port: 2222
-        source: "cmb-${GITHUB_REF##*/}.tar.bz2"
-        target: "/home/${{ secrets.SSH_USER }}/cmb-${GITHUB_REF##*/}.tar.bz2"
+        uses: appleboy/scp-action@v0.1.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 2222
+          source: "cmb-${{ github.ref_name }}.tar.bz2"
+          target: "/home/${{ secrets.USERNAME }}/cmb-${{ github.ref_name }}.tar.bz2"
+  
 
     - name: Deploy to server
       uses: appleboy/ssh-action@v0.1.10
