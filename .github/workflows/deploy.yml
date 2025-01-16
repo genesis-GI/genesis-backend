@@ -3,9 +3,9 @@ name: Deploy Project
 on:
   push:
     branches:
-      - production
-      - dev
-      - qa
+      - Production
+      - Dev
+      - QA
 
 jobs:
   deploy:
