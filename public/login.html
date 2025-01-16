@@ -8,10 +8,10 @@
 </head>
 <body>
     <h1 class="typing">Login to an account</h1>
-    <form id="login-form">
-        <input type="text" id="email" placeholder="Enter your email">
-        <input type="password" id="password" placeholder="Enter a password...">
-        <button type="button" id="submit" onclick="submitForm()">Submit</button>
+    <form id="login-form" onsubmit="event.preventDefault(); submitForm();">
+        <input type="text" id="email" placeholder="Enter your email" required>
+        <input type="password" id="password" placeholder="Enter a password..." required>
+        <button type="submit" id="submit">Submit</button>
     </form>
     <button type="button" id="home" onclick="window.location.href='/'">Home</button>
     <div id="notification" class="hidden"></div>
@@ -30,31 +30,74 @@
     }
 
     async function hashPassword(password) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        try {
+            console.log("Hashing password...");
+            if (!window.isSecureContext) {
+                console.error("Subtle crypto requires a secure context (HTTPS).");
+                // Fallback or skip hashing here
+                return password;
+            }
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+            const hashedPassword = Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+            console.log("Password hashed successfully:", hashedPassword);
+            return hashedPassword;
+        } catch (error) {
+            console.error("Hashing error:", error);
+            // Fallback or skip hashing here
+            return password;
+        }
     }
 
     async function submitForm() {
+        console.log("Submitting....");
         if (!/\S/.test(password.value) || !/\S/.test(email.value)) {
             showNotification("Error: Fields cannot be empty", "error");
-        } else {
-            try {
-                const hashedPassword = await hashPassword(password.value);
-                const url = `/login/${email.value}/${hashedPassword}`;
-                const response = await fetch(url, { method: "POST" });
-                if (response.status !== 200) {
-                    showNotification("Something went wrong, please try again", "error");
-                } else {
-                    showNotification("Login successful!", "success");
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 1000);
-                }
-            } catch (error) {
-                showNotification("Something went wrong, please try again", "error");
+            return;
+        }
+
+        const hashedPassword = await hashPassword(password.value);
+        console.log("Hashed Password:", hashedPassword);
+
+        try {
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email: email.value, password: hashedPassword })
+            });
+
+            if (response.ok) {
+                showNotification("Login successful", "success");
+                // Redirect to another page if needed
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+                window.location.href = '/';
+            } else {
+                const errorData = await response.json();
+                showNotification(`Login failed: ${errorData.message}`, "error");
             }
+        } catch (error) {
+            console.error("Request error:", error);
+            showNotification("Login failed: Network error", "error");
         }
     }
 </script>

@@ -12,6 +12,7 @@
             font-family: Arial, sans-serif;
             background-color: #1a1a2e;
             color: #e0e0e0;
+            overflow: hidden; /* Prevent body from scrolling */
         }
         #sidebar {
             width: 200px;
@@ -51,6 +52,7 @@
             padding: 20px;
             margin-left: 220px; /* Increased margin to add space */
             margin-right: 220px; /* Increased margin to add space */
+            overflow: hidden; /* Prevent main content from scrolling */
         }
         #userbar {
             width: 200px;
@@ -69,9 +71,34 @@
             display: flex;
             align-items: center;
         }
-        .staff::before, .backer::before {
-            content: '👤';
+        .staff::before,
+        .backer::before {
+            content: "";
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
             margin-right: 5px;
+        }
+        .staff.online::before,
+        .backer.online::before {
+            background-color: green;
+        }
+        .staff.away::before,
+        .backer.away::before {
+            background-color: yellow;
+        }
+        .staff.offline::before,
+        .backer.offline::before {
+            background-color: gray;
+        }
+        .staff.dnd::before,
+        .backer.dnd::before {
+            background-color: red;
+        }
+        .staff.playing::before,
+        .backer.playing::before {
+            background-color: blue;
         }
         .staff {
             color: gold;
@@ -134,11 +161,23 @@
             background-color: #1f4068;
             border-radius: 5px;
             padding: 10px;
+            overflow: hidden; /* Prevent chat container from scrolling */
         }
         #chat-messages {
             flex: 1;
-            overflow-y: auto;
+            overflow-y: auto; /* Make chat messages scrollable */
             margin-bottom: 10px;
+        }
+        #chat-messages::-webkit-scrollbar {
+            width: 12px;
+        }
+        #chat-messages::-webkit-scrollbar-track {
+            background: #1f4068;
+        }
+        #chat-messages::-webkit-scrollbar-thumb {
+            background-color: #888;
+            border-radius: 10px;
+            border: 3px solid #1f4068;
         }
         #chat-input {
             display: flex;
@@ -232,6 +271,10 @@
         a:visited {
             color: #1f78d1; /* Ensure visited links are also blue */
         }
+        .message-time {
+            font-size: smaller;
+            color: gray;
+        }
     </style>
 </head>
 <body>
@@ -257,12 +300,10 @@
             <p id="message"></p>
         </div>
         <div id="chat">
-            <div id="chat-messages">
-                <!-- Chat messages will appear here -->
-            </div>
+            <div id="chat-messages"></div>
             <div id="chat-input">
-                <input type="text" id="messageInput" placeholder="Message genesis-testing-chat" disabled>
-                <button disabled >Send</button>
+                <input type="text" id="messageInput" placeholder="Type a message..." />
+                <button id="sendMessageBtn">Send</button>
             </div>
         </div>
     </div>
@@ -276,9 +317,15 @@
         <div id="backers-list">
             <!-- Backers users will be dynamically added here -->
         </div>
-        <h3>Current User</h3>
-        <div id="current-user">
-            <!-- Current user info will be dynamically added here -->
+        <div>
+            <label for="statusDropdown">Set Status:</label>
+            <select id="statusDropdown" onchange="handleStatusChange(this.value)">
+                <option value="online">Online</option>
+                <option value="away">Away</option>
+                <option value="offline">Offline</option>
+                <option value="dnd">Do Not Disturb</option>
+                <option value="playing">Playing</option>
+            </select>
         </div>
     </div>
 
@@ -306,11 +353,108 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            checkCurrentUser();
-            loadChannels();
-            switchChannel('genesis-testing-chat');
+            autoLogin();
             fetchUsers();
+            listenForStatusUpdates();
+            setInterval(updateMessageTimes, 1000); // Update message times every second for real-time effect
         });
+
+        // Remove or comment out the beforeunload listener to avoid forcing offline on reload
+        // window.addEventListener('beforeunload', async () => {
+        //     console.log("User is leaving the page");
+        //     console.log("Setting user status to offline");
+        //     await setUserStatus("offline", false);
+        // });
+
+        document.getElementById('homeButton').addEventListener('click', () => {
+            console.log("User is leaving the page");
+            console.log("Setting user status to offline");
+            setUserStatus("offline", false).then(() => {
+                window.location.href = '/';
+            });
+        });
+
+        async function setUserStatus(newStatus, updateWantedStatus = false) {
+            try {
+                // Set the new status
+                await fetch("/spectrum/status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                // Optionally save the new status as the wanted status
+                if (updateWantedStatus) {
+                    const userEmail = await getCurrentUserEmail();
+                    await fetch(`/spectrum/setUserWantedStatus/${userEmail}/${newStatus}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" }
+                    });
+                }
+               if(updateWantedStatus){
+                console.log("Setting wanted status ")
+               }
+
+                console.log("Status set to:", newStatus);
+                if (updateWantedStatus) {
+                    console.log("Wanted status set to:", newStatus);
+                }
+            } catch (error) {
+                console.error("Error setting user status:", error);
+            }
+        }
+
+        async function getCurrentUserEmail() {
+            const response = await fetch('/auto-login');
+            if (response.ok) {
+                const user = await response.json();
+                return user.email;
+            } else {
+                throw new Error("Failed to fetch user email");
+            }
+        }
+
+        async function autoLogin() {
+            try {
+                const response = await fetch('/auto-login');
+                if (response.ok) {
+                    const user = await response.json();
+                    if (user.admin) {
+                        document.getElementById('editMotdButton').style.display = 'block';
+                        document.getElementById('createChannelButton').style.display = 'block';
+                    } else {
+                        document.getElementById('createChannelButton').style.display = 'none';
+                    }
+
+                    // Set the current user status to the wanted status here
+
+                    // Fetch and set the wanted status in the dropdown
+                    const wantedStatusResponse = await fetch(`/spectrum/getUserWantedStatus/${user.email}`);
+                    if (wantedStatusResponse.ok) {
+                        const wantedStatusData = await wantedStatusResponse.json();
+                        const wantedStatus = wantedStatusData.status;
+
+                        // Set the dropdown to the wanted status
+                        const statusDropdown = document.getElementById('statusDropdown');
+                        if (statusDropdown) {
+                            statusDropdown.value = wantedStatus;
+                            setUserStatus(wantedStatus, false); // immediately use wanted status as current
+                        }
+                    } else {
+                        console.error("Failed to fetch wanted status");
+                    }
+
+                    loadChannels();
+                    switchChannel('genesis-testing-chat');
+                    fetchUsers();
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Error during auto-login:', error);
+                window.location.href = '/login';
+            }
+        }
 
         function formatTime(seconds) {
             if (seconds < 60) {
@@ -333,49 +477,68 @@
             const days = Math.floor(hours / 24);
             if (days == 1) {
                 return `${days} day ago`;
-            } else if (days < 7) {
-                return `${days} days ago`;
-            }
-
-            const weeks = Math.floor(days / 7);
-            if (weeks == 1) {
-                return `${weeks} week ago`;
-            } else if (weeks < 4) {
-                return `${weeks} weeks ago`;
-            }
-
-            const months = Math.floor(days / 30);
-            if (months < 12) {
-                return `${months} months ago`;
-            }
-
-            const years = Math.floor(days / 365);
-            if (years == 1) {
-                return `${years} year ago`;
             } else {
-                return `${years} years ago`;
+                return `${days} days ago`;
             }
         }
 
         let currentEventSource;
         let lastChangedInterval;
 
+        function updateLastChanged(date) {
+            if (lastChangedInterval) {
+                clearInterval(lastChangedInterval);
+            }
+            function refresh() {
+                const now = new Date();
+                const secondsDiff = Math.floor((now - date) / 1000);
+                document.getElementById('lastChanged').innerText = formatTime(secondsDiff);
+            }
+            refresh();
+            lastChangedInterval = setInterval(refresh, 60000);
+        }
+
+        function updateMessageTimes() {
+            const now = new Date();
+            document.querySelectorAll('.message-time').forEach(span => {
+                const timestamp = new Date(parseInt(span.dataset.timestamp));
+                const secondsDiff = Math.floor((now - timestamp) / 1000);
+                span.innerText = formatTime(secondsDiff);
+            });
+        }
+
         async function switchChannel(channel) {
             console.log('Switching to channel:', channel);
+            // If you want to force all channels to lower-case in Firestore:
+            channel = channel.toLowerCase();
+
             document.getElementById('messageInput').placeholder = `Message ${channel}`;
             document.getElementById('currentChannelName').innerText = channel;
-            document.querySelectorAll('#channels-list button').forEach(button => button.classList.remove('active'));
+            document.querySelectorAll('#channels-list button').forEach(btn => btn.classList.remove('active'));
             const channelButton = document.getElementById(channel);
             if (channelButton) {
                 channelButton.classList.add('active');
             }
+
             try {
-                const response = await fetch(`/spectrum/motd/${channel}`);
+                const response = await fetch(`/spectrum/${channel}/motd`);
                 if (response.ok) {
                     const data = await response.json();
                     document.getElementById('message').innerHTML = parseMarkdown(data.message);
-                    const date = new Date(data.date._seconds * 1000 + data.date._nanoseconds / 1000000);
-                    updateLastChanged(date);
+
+                    if (data.date && data.date._seconds !== undefined && data.date._nanoseconds !== undefined) {
+                        const date = new Date((data.date._seconds * 1000) + (data.date._nanoseconds / 1000000));
+                        updateLastChanged(date);
+                    } else if (data.date && typeof data.date === 'string') {
+                        const parsed = new Date(data.date);
+                        if (!isNaN(parsed.getTime())) {
+                            updateLastChanged(parsed);
+                        } else {
+                            document.getElementById('lastChanged').innerText = '';
+                        }
+                    } else {
+                        document.getElementById('lastChanged').innerText = '';
+                    }
                 } else {
                     console.error('Failed to fetch MOTD:', response.statusText);
                 }
@@ -383,34 +546,18 @@
                 console.error('Error fetching MOTD:', error);
             }
 
-            // Listen for real-time updates
+            try {
+                const response = await fetch(`/spectrum/${channel}/messages`);
+                if (response.ok) {
+                    const messages = await response.json();
+                    renderMessages(messages);
+                }
+            } catch (error) {
+                console.error('Error fetching messages:', error);
+            }
+
             listenForMOTDUpdates(channel);
-        }
-
-        function updateLastChanged(date) {
-            const lastChangedElement = document.getElementById('lastChanged');
-            const update = () => {
-                const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-                lastChangedElement.innerText = formatTime(seconds);
-            };
-            update();
-            if (lastChangedInterval) {
-                clearInterval(lastChangedInterval);
-            }
-            lastChangedInterval = setInterval(update, 60000);
-        }
-
-        function listenForMOTDUpdates(channel) {
-            if (currentEventSource) {
-                currentEventSource.close();
-            }
-            currentEventSource = new EventSource(`/spectrum/motd/updates/${channel}`);
-            currentEventSource.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                document.getElementById('message').innerHTML = parseMarkdown(data.message);
-                const date = new Date(data.date._seconds * 1000 + data.date._nanoseconds / 1000000);
-                updateLastChanged(date);
-            };
+            listenForMessageUpdates(channel);
         }
 
         async function checkCurrentUser() {
@@ -418,8 +565,6 @@
                 const response = await fetch('/spectrum/currentUser');
                 if (response.ok) {
                     const user = await response.json();
-                    const currentUserDiv = document.getElementById('current-user');
-                    currentUserDiv.innerHTML = `<p>Email: ${user.email}</p><p>Username: ${user.username}</p><p>Admin: ${user.admin}</p>`;
                     if (user.admin) {
                         document.getElementById('editMotdButton').style.display = 'block';
                         document.getElementById('createChannelButton').style.display = 'block';
@@ -451,7 +596,7 @@
             }
 
             // Listen for real-time updates
-            listenForChannelUpdates();
+            //listenForChannelUpdates();
         }
 
         function updateChannelsList(channels) {
@@ -461,6 +606,7 @@
                 const button = document.createElement('button');
                 button.id = channel;
                 button.innerHTML = `${channel} <span class="star" onclick="starChannel(event, '${channel}')">☆</span>`;
+                try{
                 if (document.getElementById('current-user').innerHTML.includes('Admin: true')) {
                     const trashIcon = document.createElement('span');
                     trashIcon.classList.add('trash');
@@ -470,6 +616,9 @@
                 }
                 button.onclick = () => switchChannel(channel);
                 channelsList.appendChild(button);
+                } catch (error) {
+                    console.error('Error updating channels list:', error);
+                }
             });
         }
 
@@ -477,7 +626,11 @@
             const eventSource = new EventSource('/spectrum/channels/updates');
             eventSource.onmessage = function(event) {
                 const channels = JSON.parse(event.data);
+                try{
                 updateChannelsList(channels);
+                }catch(error){
+                    console.log("Error while listening for channel updates")
+                }
             };
         }
 
@@ -519,49 +672,49 @@
         async function starChannel(event, channel) {
             event.stopPropagation();
             const star = event.target;
-            const button = document.querySelector(`button[onclick="switchChannel('${channel}')"]`);
             const isStarred = star.classList.contains('filled');
-            if (isStarred) {
-                star.classList.remove('filled');
-                star.innerText = '☆';
-            } else {
-                star.classList.add('filled');
-                star.innerText = '★';
-            }
-            await saveStarredChannel(channel, !isStarred);
-            sortChannels();
-        }
+            star.classList.toggle('filled');
+            star.innerText = isStarred ? '☆' : '★';
 
-        async function saveStarredChannel(channel, isStarred) {
             try {
-                const response = await fetch(`/spectrum/starChannel/${channel}`, {
+                await fetch(`/spectrum/starChannel/${channel}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ isStarred })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isStarred: !isStarred })
                 });
-                if (!response.ok) {
-                    console.error('Failed to save starred channel:', response.statusText);
-                }
             } catch (error) {
-                console.error('Error saving starred channel:', error);
+                console.error('Error starring channel:', error);
             }
         }
 
         async function deleteChannel(event, channel) {
             event.stopPropagation();
             try {
-                const response = await fetch(`/spectrum/deleteChannel/${channel}`, { method: 'DELETE' });
+                const response = await fetch(`/spectrum/channel/${channel}`, {
+                    method: 'DELETE'
+                });
                 if (response.ok) {
-                    showNotification('Channel deleted successfully', 'success');
                     loadChannels();
-                } else {
-                    showNotification('Failed to delete channel', 'error');
                 }
             } catch (error) {
                 console.error('Error deleting channel:', error);
-                showNotification('Error deleting channel', 'error');
+            }
+        }
+
+        async function createChannel() {
+            const newChannelName = document.getElementById('newChannelName').value;
+            try {
+                const response = await fetch('/spectrum/channel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelName: newChannelName })
+                });
+                if (response.ok) {
+                    closeCreateChannelModal();
+                    loadChannels();
+                }
+            } catch (error) {
+                console.error('Error creating channel:', error);
             }
         }
 
@@ -581,31 +734,43 @@
 
         async function fetchUsers() {
             try {
-                const response = await fetch('/spectrum/users');
-                if (response.ok) {
-                    const users = await response.json();
-                    const staffList = document.getElementById('staff-list');
-                    const backersList = document.getElementById('backers-list');
-                    staffList.innerHTML = '';
-                    backersList.innerHTML = '';
-                    users.staff.forEach(user => {
-                        const userElement = document.createElement('p');
-                        userElement.innerText = user;
-                        userElement.classList.add('staff');
-                        staffList.appendChild(userElement);
-                    });
-                    users.backers.forEach(user => {
-                        const userElement = document.createElement('p');
-                        userElement.innerText = user;
-                        userElement.classList.add('backer');
-                        backersList.appendChild(userElement);
-                    });
-                } else {
-                    console.error('Failed to fetch users:', response.statusText);
-                }
+                const res = await fetch("/spectrum/users");
+                const data = await res.json();
+                renderUserList(data.staff, "staff-list");
+                renderUserList(data.backers, "backers-list");
             } catch (error) {
-                console.error('Error fetching users:', error);
+                console.error("Error fetching users:", error);
             }
+        }
+
+        function renderUserList(users, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            users.forEach(entry => {
+                const [username, status] = entry.split("|");
+                const div = document.createElement("div");
+                div.textContent = username;
+
+                if (containerId === "staff-list") {
+                    div.classList.add("staff");
+                } else if (containerId === "backers-list") {
+                    div.classList.add("backer");
+                }
+
+                if (status === "online") {
+                    div.classList.add("online");
+                } else if (status === "away") {
+                    div.classList.add("away");
+                } else if (status === "dnd") {
+                    div.classList.add("dnd");
+                } else if (status === "playing") {
+                    div.classList.add("playing");
+                } else {
+                    div.classList.add("offline");
+                }
+
+                container.appendChild(div);
+            });
         }
 
         function openMotdEditor() {
@@ -651,37 +816,6 @@
             document.getElementById('createChannelModal').style.display = 'none';
         }
 
-        async function createChannel() {
-            const newChannelName = document.getElementById('newChannelName').value;
-            try {
-                const response = await fetch(`/spectrum/createChannel/${newChannelName}`, { method: 'POST' });
-                if (response.ok) {
-                    showNotification('Channel created successfully', 'success');
-                    closeCreateChannelModal();
-                    // Add the new channel button to the list
-                    const channelsList = document.getElementById('channels-list');
-                    const newButton = document.createElement('button');
-                    newButton.id = newChannelName;
-                    newButton.innerHTML = `${newChannelName} <span class="star" onclick="starChannel(event, '${newChannelName}')">☆</span>`;
-                    if (document.getElementById('current-user').innerHTML.includes('Admin: true')) {
-                        const trashIcon = document.createElement('span');
-                        trashIcon.classList.add('trash');
-                        trashIcon.innerHTML = '🗑️';
-                        trashIcon.onclick = (event) => deleteChannel(event, newChannelName);
-                        newButton.appendChild(trashIcon);
-                    }
-                    newButton.onclick = () => switchChannel(newChannelName);
-                    channelsList.appendChild(newButton);
-                    sortChannels();
-                } else {
-                    showNotification('Failed to create channel', 'error');
-                }
-            } catch (error) {
-                console.error('Error creating channel:', error);
-                showNotification('Error creating channel', 'error');
-            }
-        }
-
         function showNotification(message, type) {
             const notification = document.getElementById('notification');
             notification.innerText = message;
@@ -696,6 +830,159 @@
             const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
             const newlinePattern = /\n/g;
             return text.replace(linkPattern, '<a href="$2" target="_blank">$1</a>').replace(newlinePattern, '<br>');
+        }
+
+        function listenForMOTDUpdates(channel) {
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+            currentEventSource = new EventSource(`/spectrum/${channel}/motd/updates`);
+            currentEventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                document.getElementById('message').innerHTML = parseMarkdown(data.message);
+                const date = new Date(data.date._seconds * 1000 + data.date._nanoseconds / 1000000);
+                updateLastChanged(date);
+            };
+        }
+
+        function handleStatusChange() {
+            const newStatus = document.getElementById('statusDropdown').value;
+            setUserStatus(newStatus, true); // also update wanted status
+        }
+
+        function listenForStatusUpdates() {
+            const eventSource = new EventSource('/spectrum/status/updates');
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                renderUserList(data.staff, "staff-list");
+                renderUserList(data.backers, "backers-list");
+            };
+        }
+
+        let lastActivity = Date.now();
+        const AWAY_TIMEOUT = 3 * 60 * 1000;
+
+        document.addEventListener("click", resetActivity);
+        document.addEventListener("keydown", resetActivity);
+
+        function resetActivity() {
+            lastActivity = Date.now();
+            const currentStatus = document.getElementById('statusDropdown').value;
+            if (currentStatus === "away") {
+                setUserStatus("online", false);
+            }
+        }
+
+        setInterval(() => {
+            const currentStatus = document.getElementById('statusDropdown').value;
+            if (currentStatus === "online" && Date.now() - lastActivity >= AWAY_TIMEOUT) {
+                setUserStatus("away", false);
+            }
+        }, 60000);
+
+        document.getElementById('sendMessageBtn').addEventListener('click', async () => {
+            const channel = "genesis-testing-chat";
+            const msg = document.getElementById('messageInput').value.trim();
+            if(msg) {
+                await fetch(`/spectrum/messages/${channel}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+                document.getElementById('messageInput').value = "";
+            }
+        });
+
+        document.getElementById('messageInput').addEventListener('keypress', async (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const channel = document.getElementById('currentChannelName').innerText;
+                const msg = document.getElementById('messageInput').value.trim();
+                if (msg) {
+                    await fetch(`/spectrum/messages/${channel}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: msg })
+                    });
+                    document.getElementById('messageInput').value = "";
+                    const chatContainer = document.getElementById('chat-messages');
+                    chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom after sending a message
+                }
+            }
+        });
+
+        async function deleteMessage(channel, messageID) {
+            try {
+                const response = await fetch(`/spectrum/messages/${channel}/${messageID}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    showNotification('Message deleted successfully', 'success');
+                    switchChannel(channel);
+                } else {
+                    const errorData = await response.json();
+                    showNotification(errorData.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting message:', error);
+                showNotification('Error deleting message', 'error');
+            }
+        }
+
+        function renderMessages(messages) {
+            const chatContainer = document.getElementById('chat-messages');
+            chatContainer.innerHTML = '';
+            messages.forEach(msg => {
+                const p = document.createElement('p');
+                const rawTime = msg["timestamp"];
+                if (rawTime && rawTime._seconds !== undefined) {
+                    const dt = new Date(rawTime._seconds * 1000 + rawTime._nanoseconds / 1e6);
+                    const now = new Date();
+                    const secondsDiff = Math.floor((now - dt) / 1000);
+                    const timeLabel = formatTime(secondsDiff);
+                    p.innerHTML = `<span class="username">${msg["username"]}</span> [<span class="message-time" data-timestamp="${dt.getTime()}">${timeLabel}</span>]: ${msg["message"]}`;
+                    p.style.color = msg["admin"] ? 'gold' : '#1f78d1';
+                } else {
+                    p.innerHTML = `<span class="username">${msg["username"]}</span>: ${msg["message"]}`;
+                    p.style.color = msg["admin"] ? 'gold' : '#1f78d1';
+                }
+                chatContainer.appendChild(p);
+            });
+        }
+
+        function listenForMessageUpdates(channel) {
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+            currentEventSource = new EventSource(`/spectrum/${channel}/messages/updates`);
+            currentEventSource.onmessage = function(event) {
+                const messages = JSON.parse(event.data);
+                renderMessages(messages);
+            };
+        }
+
+        // Ensure we scroll to the bottom on initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatContainer = document.getElementById('chat-messages');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        });
+
+        function timeAgo(date) {            const now = new Date();
+            const secondsElapsed = Math.floor((now - date) / 1000);
+            if (secondsElapsed < 60) {
+                return `${secondsElapsed} second${secondsElapsed === 1 ? '' : 's'} ago`;
+            }
+            const minutesElapsed = Math.floor(secondsElapsed / 60);
+            if (minutesElapsed < 60) {
+                return `${minutesElapsed} minute${minutesElapsed === 1 ? '' : 's'} ago`;
+            }
+            const hoursElapsed = Math.floor(minutesElapsed / 60);
+            if (hoursElapsed < 24) {
+                return `${hoursElapsed} hour${hoursElapsed === 1 ? '' : 's'} ago`;
+            }
+            const daysElapsed = Math.floor(hoursElapsed / 24);
+            return `${daysElapsed} day${daysElapsed === 1 ? '' : 's'} ago`;
         }
     </script>
 </body>

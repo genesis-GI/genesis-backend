@@ -2,6 +2,10 @@
 
 [Current Calender week (for branch-names)](https://www.calendar-week.org/)
 
+[![Docker Image CI](https://github.com/genesis-GI/genesis-backend/actions/workflows/docker-image.yml/badge.svg)](https://github.com/genesis-GI/genesis-backend/actions/workflows/docker-image.yml)
+
+[![Deploy Project](https://github.com/genesis-GI/genesis-backend/actions/workflows/deploy.yml/badge.svg)](https://github.com/genesis-GI/genesis-backend/actions/workflows/deploy.yml)
+
 This is the backend for the game Genesis. This handles account requests and Launcher functionality.
 
 Roadmap:

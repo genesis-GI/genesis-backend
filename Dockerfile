@@ -1,18 +1,13 @@
-FROM ubuntu:latest
+FROM golang:latest
 
-RUN apt-get update && \
-    apt-get install -y ca-certificates curl && \
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs && \
-    apt-get clean && \
-    npm install pm2 -g
-
-WORKDIR /cloudmesh
+WORKDIR /app
 
 COPY . . 
 
-RUN npm install
+RUN go mod download
+
+RUN go build -o main .
 
 EXPOSE 8088
 
-CMD [ "node", "main.js" ]
+CMD ["/app/main"]
