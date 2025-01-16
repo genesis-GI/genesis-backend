@@ -16,10 +16,10 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Build Docker image
-      run: docker build -t cmb-${{ github.ref_name }} .
+      run: docker build -t cmb-${{ github.ref_name | toLowerCase }} .
 
     - name: Save Docker image to file
-      run: docker save cmb-${{ github.ref_name }} | bzip2 > cmb-${{ github.ref_name }}.tar.bz2
+      run: docker save cmb-${{ github.ref_name | toLowerCase }} | bzip2 > cmb-${{ github.ref_name | toLowerCase }}.tar.bz2
 
     - name: Transfer Docker image to server
       uses: appleboy/scp-action@v0.1.0
@@ -28,7 +28,7 @@ jobs:
         username: ${{ secrets.SSH_USER }}
         password: ${{ secrets.SSH_PASSWORD }}
         port: 2222
-        source: cmb-${{ github.ref_name }}.tar.bz2
+        source: cmb-${{ github.ref_name | toLowerCase }}.tar.bz2
         target: /home/***/genesis-backend/
 
     - name: Set up SSH for deployment
@@ -83,8 +83,8 @@ jobs:
 
           # Load the built image into Docker
           echo "Loading image into Docker"
-          bzip2 -d cmb-${{ github.ref_name }}.tar.bz2
-          docker load < cmb-${{ github.ref_name }}.tar
+          bzip2 -d cmb-${{ github.ref_name | toLowerCase }}.tar.bz2
+          docker load < cmb-${{ github.ref_name | toLowerCase }}.tar
 
           # Run the new container with the correct port and restart policy
           echo "Running new container: cmb-$CONTAINER_NAME"
