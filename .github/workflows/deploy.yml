@@ -20,18 +20,16 @@ jobs:
 
     - name: Build Docker image
       run: |
-        BRANCH_NAME="${GITHUB_REF##*/}"
-        CONTAINER_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]')
-        docker build -t cmb-$CONTAINER_NAME:latest .
+        docker build -t cmb:${GITHUB_REF##*/} .
+        docker save cmb:${GITHUB_REF##*/} | bzip2 > cmb-${GITHUB_REF##*/}.tar.bz2
+    
+    - name: Login to GitHub Registry
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Save Docker image
-      run: |
-        BRANCH_NAME="${GITHUB_REF##*/}"
-        CONTAINER_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]')
-        docker save cmb-$CONTAINER_NAME:latest | bzip2 > cmb-$CONTAINER_NAME.tar.bz2
-        ls -l cmb-$CONTAINER_NAME.tar.bz2  # Verify the file exists
+    - name: Push image
+      run: docker push ghcr.io/${{ github.repository }}/cmb:${{ github.ref_name }}
 
-    - name: Transfer Docker image to server
+    - name: Transfer Docker image
       uses: appleboy/scp-action@v0.1.3
       with:
         host: ${{ secrets.HOST }}
@@ -42,6 +40,18 @@ jobs:
         target: "/home/${{ secrets.USERNAME }}/cmb-${{ github.ref_name }}.tar.bz2"
   
 
+    - name: Load and run on server
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: 2222
+        script: |
+          bzip2 -d /home/${{ secrets.USERNAME }}/cmb-${{ github.ref_name }}.tar.bz2
+          docker load -i /home/${{ secrets.USERNAME }}/cmb-${{ github.ref_name }}.tar
+          docker run --rm cmb:${GITHUB_REF##*/}
+          
     - name: Deploy to server
       uses: appleboy/ssh-action@v0.1.10
       with:
@@ -50,6 +60,8 @@ jobs:
         password: ${{ secrets.SSH_PASSWORD }}
         port: 2222
         script: |
+          docker login ghcr.io -u ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }}
+          docker pull ghcr.io/${{ github.repository }}/cmb:${{ github.ref_name }}
           # Assign the GitHub ref to GITHUB_REF
           GITHUB_REF="${{ github.ref }}"
           echo "Deploying branch $GITHUB_REF"
