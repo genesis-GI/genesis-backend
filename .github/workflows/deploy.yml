@@ -88,19 +88,3 @@ jobs:
             --restart always \
             -p $OUTGOING_PORT:8088 \
             cmb-$CONTAINER_NAME:latest
-
-          # Check container status
-          echo "Checking container status"
-          docker ps -a --filter "name=cmb-$CONTAINER_NAME"
-
-          # Check container logs
-          echo "Checking container logs"
-          docker logs cmb-$CONTAINER_NAME
-
-          # Verify application is listening on port 8088
-          echo "Verifying application is listening on port 8088"
-          docker exec cmb-$CONTAINER_NAME netstat -tuln | grep 8088
-
-          # Test the application endpoint from within the container
-          echo "Testing application endpoint from within the container"
-          docker exec cmb-$CONTAINER_NAME curl -v http://127.0.0.1:8088
