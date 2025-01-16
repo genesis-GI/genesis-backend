@@ -40,7 +40,5 @@ jobs:
 
       - name: Deploy to server
         run: |
-          sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
-          "docker stop $CONTAINER_NAME || true && docker rm $CONTAINER_NAME || true"
-          sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
-          "docker run -d --name $CONTAINER_NAME -p $PORT:80 myapp:${{ github.ref_name }}"
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+          "docker stop $CONTAINER_NAME || true && docker rm $CONTAINER_NAME || true && docker run -d --name $CONTAINER_NAME -p $PORT:80 myapp:${{ github.ref_name }}"
