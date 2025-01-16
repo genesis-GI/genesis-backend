@@ -29,6 +29,9 @@ jobs:
     - name: Build Docker image
       run: docker build -t cmb-${{ steps.vars.outputs.container_name }} .
 
+    - name: Remove fireBaseInfo.json
+      run: rm fireBaseInfo.json
+
     - name: Save Docker image to file
       run: docker save cmb-${{ steps.vars.outputs.container_name }} | bzip2 > cmb-${{ steps.vars.outputs.container_name }}.tar.bz2
 
