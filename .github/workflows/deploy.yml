@@ -81,5 +81,5 @@ jobs:
           echo "Running new container: cmb-$CONTAINER_NAME"
           docker run -d --name cmb-$CONTAINER_NAME \
             --restart always \
-            -p $OUTGOING_PORT:$OUTGOING_PORT \
+            -p $OUTGOING_PORT:8088 \
             cmb-$CONTAINER_NAME:latest
