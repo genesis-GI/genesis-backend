@@ -24,10 +24,10 @@ jobs:
         port: 2222
         script: |
           echo "Deploying branch $GITHUB_REF"
-
-          # Extract the branch name from GITHUB_REF and convert it to lowercase for the container name
-          BRANCH_NAME="${GITHUB_REF##*/}"  # Extract the branch name from refs/heads/branch-name
-          echo "Extracted Branch Name: $BRANCH_NAME"  # Debugging output
+          
+          # Hardcode branch name as 'Dev' for testing
+          BRANCH_NAME="Dev"  
+          echo "Hardcoded Branch Name: $BRANCH_NAME"  # Debugging output
 
           # Ensure the branch name is not empty
           if [ -z "$BRANCH_NAME" ]; then
