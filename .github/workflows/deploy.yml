@@ -89,8 +89,14 @@ jobs:
             -p $OUTGOING_PORT:8088 \
             cmb-$CONTAINER_NAME:latest
 
-    - name: Check SERVER_IP
-      run: |
-        if [ -z "$SERVER_IP" ]; then
-          echo "Error: SERVER_IP not defined"
-          exit 1
+          # Check container status
+          echo "Checking container status"
+          docker ps -a --filter "name=cmb-$CONTAINER_NAME"
+
+          # Check container logs
+          echo "Checking container logs"
+          docker logs cmb-$CONTAINER_NAME
+
+          # Verify application is listening on port 8088
+          echo "Verifying application is listening on port 8088"
+          docker exec cmb-$CONTAINER_NAME netstat -tuln | grep 8088
